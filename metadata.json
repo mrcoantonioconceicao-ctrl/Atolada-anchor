@@ -1,0 +1,8 @@
+{
+  "name": "Solana Anchor Smart Contract Sandbox & Auditor",
+  "description": "Interactive Rust & Solana Anchor IDE, PDA Visualizer, Security Audit & Simulation Suite",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
