@@ -71,28 +71,28 @@ pub mod solana_sandbox_counter {
         counter.authority = ctx.accounts.authority.key();
         counter.count = 0;
         counter.bump = ctx.bumps.counter;
-        msg!("Counter initialized with authority {}", counter.authority);
+        msg!("Contador inicializado com autoridade {}", counter.authority);
         Ok(())
     }
 
     pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.count = counter.count.checked_add(1).ok_or(ErrorCode::Overflow)?;
-        msg!("Counter incremented to {}", counter.count);
+        msg!("Contador incrementado para {}", counter.count);
         Ok(())
     }
 
     pub fn decrement(ctx: Context<Decrement>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.count = counter.count.checked_sub(1).ok_or(ErrorCode::Underflow)?;
-        msg!("Counter decremented to {}", counter.count);
+        msg!("Contador decrementado para {}", counter.count);
         Ok(())
     }
 
     pub fn reset(ctx: Context<Reset>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
         counter.count = 0;
-        msg!("Counter reset to 0 by authority");
+        msg!("Contador reinicializado para 0 pela autoridade");
         Ok(())
     }
 
@@ -100,12 +100,12 @@ pub mod solana_sandbox_counter {
         let counter = &mut ctx.accounts.counter;
         let old_authority = counter.authority;
         counter.authority = new_authority;
-        msg!("Authority transferred from {} to {}", old_authority, new_authority);
+        msg!("Autoridade transferida de {} para {}", old_authority, new_authority);
         Ok(())
     }
 
     pub fn close(ctx: Context<CloseAccount>) -> Result<()> {
-        msg!("Counter account closed. Sol refunded to authority.");
+        msg!("Conta de contador encerrada. SOL reembolsado para a autoridade.");
         Ok(())
     }
 }
@@ -196,9 +196,9 @@ pub struct UserCounter {
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Counter arithmetic overflow occurred.")]
+    #[msg("Ocorreu estouro de capacidade aritmética (Overflow).")]
     Overflow,
-    #[msg("Counter arithmetic underflow occurred.")]
+    #[msg("Ocorreu subfluxo de capacidade aritmética (Underflow).")]
     Underflow,
 }
 `;
@@ -215,13 +215,13 @@ pub mod solana_sandbox_counter {
         let counter = &mut ctx.accounts.counter;
         counter.authority = ctx.accounts.authority.key();
         counter.count = 0;
-        // VULNERABILITY 1: Bump is not stored in state for canonical bump checks
+        // VULNERABILIDADE 1: O Bump não é armazenado no estado para verificações do bump canônico
         Ok(())
     }
 
     pub fn increment(ctx: Context<Increment>) -> Result<()> {
         let counter = &mut ctx.accounts.counter;
-        // VULNERABILITY 2: Unchecked math allows integer overflow
+        // VULNERABILIDADE 2: Matemática sem verificação permite Integer Overflow
         counter.count += 1;
         Ok(())
     }
@@ -232,7 +232,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + 32 + 8, // VULNERABILITY 3: Missing 1 byte for bump seed
+        space = 8 + 32 + 8, // VULNERABILIDADE 3: Faltando 1 byte para a seed do bump
         seeds = [b"counter", authority.key().as_ref()],
         bump
     )]
@@ -246,8 +246,8 @@ pub struct Initialize<'info> {
 pub struct Increment<'info> {
     #[account(
         mut
-        // VULNERABILITY 4: Missing seeds and bump validation!
-        // VULNERABILITY 5: Missing has_one = authority constraint! Anyone can pass any counter account!
+        // VULNERABILIDADE 4: Faltando validação de seeds e bump!
+        // VULNERABILIDADE 5: Faltando restrição has_one = authority! Qualquer pessoa pode passar qualquer conta de contador!
     )]
     pub counter: Account<'info, UserCounter>,
     pub authority: Signer<'info>,
@@ -263,20 +263,20 @@ pub struct UserCounter {
 export const CODE_TEMPLATES: CodeTemplate[] = [
   {
     id: 'user_counter',
-    title: 'PDA User Counter (Provided Code)',
-    description: 'Secure Anchor program with PDA seeds, canonical bump validation, and has_one access control.',
+    title: 'Contador de Usuário PDA (Código Padrão)',
+    description: 'Programa seguro em Anchor com seeds PDA, validação de bump canônico e controle de acesso has_one.',
     code: USER_INITIAL_COUNTER_CODE,
   },
   {
     id: 'extended_counter',
-    title: 'Full Extended Counter (Reset, Transfer & Close)',
-    description: 'Includes decrement, reset, checked_add math, authority transfer, error codes, and account closure.',
+    title: 'Contador Expandido (Reset, Transferência e Fechamento)',
+    description: 'Inclui decremento, reset, matemática segura checked_add, transferência de autoridade e fechamento de conta.',
     code: EXTENDED_COUNTER_CODE,
   },
   {
     id: 'vulnerable_counter',
-    title: 'Vulnerable Counter (Security Audit Test)',
-    description: 'Demonstrates common security pitfalls: missing has_one, unverified seeds, missing bump storage.',
+    title: 'Contador Vulnerável (Teste de Auditoria de Segurança)',
+    description: 'Demonstra falhas comuns: ausência de has_one, seeds não verificadas e falta de armazenamento do bump.',
     code: VULNERABLE_COUNTER_CODE,
   },
 ];

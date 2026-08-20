@@ -65,29 +65,28 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
   const hasBumpStore = code.includes('counter.bump = ctx.bumps.counter') || code.includes('bump = counter.bump');
   const hasCheckedMath = code.includes('checked_add') || code.includes('checked_sub');
   const hasSpace = code.includes('space = 8 + 32 + 8 + 1') || code.includes('space =');
-  const hasSeedsInIncrement = code.includes('seeds = [b"counter"') || code.includes('seeds =');
-  const isVulnerableTemplate = code.includes('VULNERABILITY');
+  const isVulnerableTemplate = code.includes('VULNERABILIDADE') || code.includes('VULNERABILITY');
 
   // Check 1: Access Control - has_one constraint
   if (hasHasOne) {
     issues.push({
       id: 'access-control-has-one',
-      category: 'Access Control',
+      category: 'Controle de Acesso',
       severity: 'pass',
-      title: 'Signer & Authority Binding (`has_one = authority`) Verified',
-      description: 'The `Increment` struct specifies `has_one = authority`. Anchor automatically checks that `counter.authority == authority.key()`.',
-      recommendation: 'Maintain explicit authority validation on all mutating instruction contexts.',
+      title: 'Vinculação de Assinante e Autoridade (`has_one = authority`) Verificada',
+      description: 'A struct `Increment` especifica `has_one = authority`. O Anchor verifica automaticamente se `counter.authority == authority.key()`.',
+      recommendation: 'Mantenha a validação explícita de autoridade em todos os contextos de instruções mutáveis.',
     });
   } else {
     issues.push({
       id: 'access-control-missing-has-one',
-      category: 'Access Control',
+      category: 'Controle de Acesso',
       severity: 'critical',
-      title: 'Missing Access Control Constraint (`has_one = authority`)',
-      description: 'The instruction struct does not enforce `has_one = authority` or `constraint = counter.authority == authority.key()`. Any malicious user can pass a foreign counter account and mutate state!',
-      recommendation: 'Add `has_one = authority` to the `#[account(...)]` attribute macro in the context struct.',
+      title: 'Falta Restrição de Controle de Acesso (`has_one = authority`)',
+      description: 'A struct de instrução não impõe `has_one = authority` nem `constraint = counter.authority == authority.key()`. Qualquer usuário malicioso pode passar uma conta de contador de terceiros e alterar seu estado!',
+      recommendation: 'Adicione `has_one = authority` no atributo `#[account(...)]` da struct de contexto.',
       fixAction: {
-        label: 'Add `has_one = authority` constraint',
+        label: 'Adicionar restrição `has_one = authority`',
         patchCode: `#[account(
         mut,
         seeds = [b"counter", authority.key().as_ref()],
@@ -104,20 +103,20 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
       id: 'pda-canonical-bump',
       category: 'PDA',
       severity: 'pass',
-      title: 'Canonical Bump Storage & Re-validation',
-      description: 'The bump seed is cached during `initialize` (`counter.bump = ctx.bumps.counter`) and re-checked during subsequent calls using `bump = counter.bump`.',
-      recommendation: 'Storing and verifying canonical bumps prevents CPU re-derivation attacks and rogue bump injections.',
+      title: 'Armazenamento e Revalidação do Bump Canônico',
+      description: 'A seed do bump é salva em cache no `initialize` (`counter.bump = ctx.bumps.counter`) e rechecada em chamadas subsequentes com `bump = counter.bump`.',
+      recommendation: 'Armazenar e verificar bumps canônicos previne ataques de rederivação na CPU e injeção de bumps arbitrários.',
     });
   } else {
     issues.push({
       id: 'pda-missing-bump',
       category: 'PDA',
       severity: 'high',
-      title: 'Missing Canonical Bump Caching & Verification',
-      description: 'The contract does not cache or check `bump = counter.bump`. Without bump verification, attackers could submit non-canonical bump seeds or force expensive on-chain re-derivations.',
-      recommendation: 'Store `pub bump: u8` inside `UserCounter` during init and validate with `bump = counter.bump`.',
+      title: 'Falta Armazenamento e Verificação do Bump Canônico',
+      description: 'O contrato não armazena nem verifica `bump = counter.bump`. Sem verificação de bump, atacantes podem enviar seeds não-canônicas ou forçar recálculos caros on-chain.',
+      recommendation: 'Guarde `pub bump: u8` na struct `UserCounter` durante a inicialização e valide com `bump = counter.bump`.',
       fixAction: {
-        label: 'Store & Validate Bump',
+        label: 'Armazenar e Validar Bump',
         patchCode: 'counter.bump = ctx.bumps.counter;',
       },
     });
@@ -127,29 +126,29 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
   if (code.includes('space = 8 + 32 + 8 + 1')) {
     issues.push({
       id: 'space-exact-49',
-      category: 'Rent / Space',
+      category: 'Rent / Espaço',
       severity: 'pass',
-      title: 'Exact Space Allocation (49 Bytes)',
-      description: 'Space calculated precisely: 8 (Discriminator) + 32 (Pubkey) + 8 (u64 counter) + 1 (u8 bump) = 49 bytes.',
-      recommendation: 'Exact space allocation optimizes rent costs and prevents memory alignment bugs.',
+      title: 'Alocação Exata de Espaço em Disco (49 Bytes)',
+      description: 'Espaço calculado com precisão: 8 (Discriminador Anchor) + 32 (Pubkey) + 8 (u64 contador) + 1 (u8 bump) = 49 bytes.',
+      recommendation: 'A alocação exata de espaço otimiza custos de isenção de aluguel e previne erros de alinhamento de memória.',
     });
   } else if (hasSpace && !code.includes('+ 1')) {
     issues.push({
       id: 'space-missing-bump-byte',
-      category: 'Rent / Space',
+      category: 'Rent / Espaço',
       severity: 'medium',
-      title: 'Insufficient Space Allocation (Missing Bump Byte)',
-      description: 'Account space appears to omit the 1-byte allocation for `u8 bump`. Account creation will fail with `AccountDataTooSmall` when setting bump.',
-      recommendation: 'Update space constraint to `space = 8 + 32 + 8 + 1` (49 bytes).',
+      title: 'Alocação Insuficiente de Espaço (Faltando Byte do Bump)',
+      description: 'O espaço da conta omite o 1 byte necessário para `u8 bump`. A criação da conta falhará com erro `AccountDataTooSmall` ao tentar gravar o bump.',
+      recommendation: 'Atualize a restrição para `space = 8 + 32 + 8 + 1` (49 bytes).',
     });
   } else {
     issues.push({
       id: 'space-unconstrained',
-      category: 'Rent / Space',
+      category: 'Rent / Espaço',
       severity: 'high',
-      title: 'Missing or Unvalidated Account Space',
-      description: '`init` macro requires an explicit `space` parameter to calculate rent exemption and initialize memory.',
-      recommendation: 'Specify `space = 8 + 32 + 8 + 1` in `#[account(init, ...)]`.',
+      title: 'Espaço de Conta Ausente ou Não Validado',
+      description: 'A macro `init` exige o parâmetro `space` explícito para calcular a isenção de aluguel e inicializar a memória.',
+      recommendation: 'Especifique `space = 8 + 32 + 8 + 1` no atributo `#[account(init, ...)]`.',
     });
   }
 
@@ -157,22 +156,22 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
   if (hasCheckedMath) {
     issues.push({
       id: 'math-checked',
-      category: 'Math / Overflow',
+      category: 'Matemática / Overflow',
       severity: 'pass',
-      title: 'Checked Arithmetic Used (`checked_add`)',
-      description: 'Mathematical operations use checked arithmetic (`checked_add`), preventing silent integer overflow or panic.',
-      recommendation: 'Always use `checked_add` or configure `OverflowHandlers` in Cargo.toml.',
+      title: 'Uso de Aritmética Segura (`checked_add`)',
+      description: 'Operações matemáticas usam aritmética checked (`checked_add`), evitando estouro de inteiros silencioso ou travamento do programa.',
+      recommendation: 'Sempre utilize `checked_add` ou configure `OverflowHandlers` no arquivo Cargo.toml.',
     });
   } else if (code.includes('+= 1') || code.includes('count +=')) {
     issues.push({
       id: 'math-unchecked-addition',
-      category: 'Math / Overflow',
+      category: 'Matemática / Overflow',
       severity: 'low',
-      title: 'Direct Arithmetic Addition (`counter.count += 1`)',
-      description: 'Direct addition (`+=`) can overflow `u64::MAX` in release builds if overflow checks are disabled in Cargo.toml.',
-      recommendation: 'Replace `counter.count += 1` with `counter.count = counter.count.checked_add(1).ok_or(ErrorCode::Overflow)?;`.',
+      title: 'Adição Aritmética Direta (`counter.count += 1`)',
+      description: 'A adição direta (`+=`) pode estourar `u64::MAX` em compilações de release se a checagem de overflow estiver desativada.',
+      recommendation: 'Substitua `counter.count += 1` por `counter.count = counter.count.checked_add(1).ok_or(ErrorCode::Overflow)?;`.',
       fixAction: {
-        label: 'Use checked_add',
+        label: 'Usar checked_add',
         patchCode: 'counter.count = counter.count.checked_add(1).ok_or(ErrorCode::Overflow)?;',
       },
     });
@@ -182,11 +181,11 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
   if (code.includes('pub authority: Signer<\'info\'>')) {
     issues.push({
       id: 'signer-check-pass',
-      category: 'Access Control',
+      category: 'Controle de Acesso',
       severity: 'pass',
-      title: 'Signer Type Validation (`Signer<\'info\'>`)',
-      description: '`authority` is declared as `Signer<\'info\'>`, ensuring Solana runtime cryptographically verifies the transaction signature.',
-      recommendation: 'Never replace `Signer` with unvalidated `AccountInfo` for authority checks.',
+      title: 'Validação de Tipo Signer (`Signer<\'info\'>`)',
+      description: '`authority` está declarada como `Signer<\'info\'>`, garantindo que o runtime da Solana verifique criptograficamente a assinatura da transação.',
+      recommendation: 'Nunca substitua `Signer` por `AccountInfo` sem verificação manual do campo `.is_signer`.',
     });
   }
 

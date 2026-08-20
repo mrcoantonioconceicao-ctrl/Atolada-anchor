@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CODE_TEMPLATES } from '../data/defaultContracts';
 import { AuditIssue } from '../types/solana';
+import { validateRustSyntax } from '../utils/solanaAuditEngine';
 import { Play, RotateCcw, Shield, Layers, Key, Lock, CheckCircle2, AlertTriangle, XCircle, Code, FileText, ChevronRight } from 'lucide-react';
 
 interface CodeEditorProps {
@@ -22,12 +23,31 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('user_counter');
   const [activeRightTab, setActiveRightTab] = useState<'ast' | 'audit'>('audit');
+  const [syntaxError, setSyntaxError] = useState<string | null>(null);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplate(templateId);
+    setSyntaxError(null);
     const found = CODE_TEMPLATES.find((t) => t.id === templateId);
     if (found) {
       setCode(found.code);
+    }
+  };
+
+  const handleRunAuditWithValidation = () => {
+    const validation = validateRustSyntax(code);
+    if (!validation.isValid) {
+      setSyntaxError(validation.error || 'Erro de sintaxe Rust/Anchor detectado.');
+      return;
+    }
+    setSyntaxError(null);
+    onRunAudit();
+  };
+
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode);
+    if (syntaxError) {
+      setSyntaxError(null);
     }
   };
 
@@ -43,41 +63,41 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const getSeverityBadge = (sev: AuditIssue['severity']) => {
     switch (sev) {
       case 'critical':
-        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#f85149]/20 text-[#ff7b72] border border-[#f85149]/50 flex items-center gap-1"><XCircle className="w-3 h-3" /> Critical</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#f85149]/20 text-[#ff7b72] border border-[#f85149]/50 flex items-center gap-1"><XCircle className="w-3 h-3" /> Crítico</span>;
       case 'high':
-        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#d29922]/20 text-[#ffa657] border border-[#d29922]/50 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> High Risk</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#d29922]/20 text-[#ffa657] border border-[#d29922]/50 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Risco Alto</span>;
       case 'medium':
-        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#e3b341]/20 text-[#e3b341] border border-[#e3b341]/50">Warning</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#e3b341]/20 text-[#e3b341] border border-[#e3b341]/50">Alerta</span>;
       case 'low':
-        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/50">Low</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/50">Baixo</span>;
       case 'pass':
-        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#238636]/20 text-[#7ee787] border border-[#238636]/50 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Secure</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#238636]/20 text-[#7ee787] border border-[#238636]/50 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Seguro</span>;
       default:
         return null;
     }
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-65px)] bg-[#0d1117] text-[#c9d1d9] overflow-hidden">
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-100px)] lg:h-[calc(100vh-65px)] bg-[#0d1117] text-[#c9d1d9] overflow-y-auto lg:overflow-hidden">
       {/* LEFT: Code Editor Pane */}
       <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r border-[#30363d] min-w-0">
         {/* Editor Controls Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-[#161b22] border-b border-[#30363d]">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 font-mono text-xs text-[#c9d1d9] bg-[#0d1117] px-2.5 py-1 rounded border border-[#30363d]">
-              <FileText className="w-3.5 h-3.5 text-[#58a6ff]" />
-              <span>programs/solana_sandbox_counter/src/lib.rs</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-[#161b22] border-b border-[#30363d]">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 font-mono text-[11px] sm:text-xs text-[#c9d1d9] bg-[#0d1117] px-2 py-1 rounded border border-[#30363d] max-w-full truncate">
+              <FileText className="w-3.5 h-3.5 text-[#58a6ff] shrink-0" />
+              <span className="truncate">programs/solana_sandbox_counter/src/lib.rs</span>
             </div>
 
             {/* Template Selector */}
             <select
               value={selectedTemplate}
               onChange={(e) => handleTemplateChange(e.target.value)}
-              className="bg-[#0d1117] text-xs font-mono text-[#c9d1d9] border border-[#30363d] rounded px-2.5 py-1 focus:outline-none focus:border-[#58a6ff]"
+              className="bg-[#0d1117] text-[11px] sm:text-xs font-mono text-[#c9d1d9] border border-[#30363d] rounded px-2 py-1 focus:outline-none focus:border-[#58a6ff] max-w-[220px] sm:max-w-xs truncate"
             >
               {CODE_TEMPLATES.map((t) => (
                 <option key={t.id} value={t.id}>
-                  Template: {t.title}
+                  Modelo: {t.title}
                 </option>
               ))}
             </select>
@@ -87,26 +107,47 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             <button
               onClick={onResetCode}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#8b949e] hover:text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors"
-              title="Reset to provided Anchor contract code"
+              title="Restaurar código do contrato Anchor fornecido"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Code</span>
+              <span className="hidden sm:inline">Restaurar Código</span>
+              <span className="sm:hidden">Reset</span>
             </button>
 
             <button
-              onClick={onRunAudit}
+              onClick={handleRunAuditWithValidation}
               className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-white bg-[#238636] hover:bg-[#2ea043] border border-[#30363d] rounded transition-all shadow-sm"
             >
               <Play className="w-3.5 h-3.5 text-white fill-white" />
-              <span>Analyze & Audit</span>
+              <span>Analisar e Auditar</span>
             </button>
           </div>
         </div>
 
+        {/* Syntax Error Visual Alert Banner */}
+        {syntaxError && (
+          <div className="mx-3 my-2 p-3 bg-[#f85149]/15 border border-[#f85149]/60 text-[#ff7b72] rounded-md text-xs flex items-start justify-between gap-2 shadow-md shrink-0">
+            <div className="flex items-start gap-2">
+              <XCircle className="w-4 h-4 text-[#ff7b72] shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block text-white text-[12px]">Erro de Sintaxe (Pré-Auditoria Bloqueada):</span>
+                <p className="mt-0.5 leading-relaxed text-[#ff7b72] font-mono text-[11px]">{syntaxError}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSyntaxError(null)}
+              className="text-[#8b949e] hover:text-white px-1.5 py-0.5 text-xs bg-[#21262d] hover:bg-[#30363d] rounded border border-[#30363d] shrink-0"
+              title="Fechar alerta"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Code Input & Line Numbers */}
-        <div className="flex-1 relative font-mono text-xs overflow-auto bg-[#0d1117] flex">
+        <div className="flex-1 relative font-mono text-xs overflow-auto bg-[#0d1117] flex min-h-[350px] lg:min-h-0">
           {/* Line Numbers */}
-          <div className="py-3 px-3 text-right text-[#8b949e] select-none bg-[#161b22]/50 border-r border-[#30363d] font-mono text-xs min-w-[40px] leading-relaxed">
+          <div className="py-3 px-2.5 text-right text-[#8b949e] select-none bg-[#161b22]/50 border-r border-[#30363d] font-mono text-xs min-w-[36px] sm:min-w-[40px] leading-relaxed">
             {code.split('\n').map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
@@ -115,42 +156,42 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           {/* Rust Syntax Editor */}
           <textarea
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => handleCodeChange(e.target.value)}
             spellCheck={false}
             className="flex-1 p-3 bg-transparent text-[#c9d1d9] font-mono text-xs leading-relaxed focus:outline-none resize-none tab-4 whitespace-pre font-normal border-none"
-            placeholder="// Paste or edit your Rust Anchor smart contract code here..."
+            placeholder="// Cole ou edite o código do seu smart contract Rust Anchor aqui..."
           />
         </div>
 
         {/* Bottom Status bar */}
-        <div className="px-4 py-1.5 bg-[#161b22] border-t border-[#30363d] flex items-center justify-between text-[11px] font-mono text-[#8b949e]">
-          <div className="flex items-center gap-4">
+        <div className="px-3 sm:px-4 py-1.5 bg-[#161b22] border-t border-[#30363d] flex flex-wrap items-center justify-between gap-2 text-[10px] sm:text-[11px] font-mono text-[#8b949e]">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-[#7ee787] animate-pulse"></span>
-              Anchor Environment: Modern Solana v1.18+
+              Ambiente Anchor: Solana v1.18+ Moderno
             </span>
-            <span>Lines: {code.split('\n').length}</span>
-            <span>Space: 49 Bytes (Rent Exempt)</span>
+            <span>Linhas: {code.split('\n').length}</span>
+            <span className="hidden sm:inline">Espaço: 49 Bytes (Isento de Aluguel)</span>
           </div>
-          <div>Language: Rust / Anchor Framework</div>
+          <div>Linguagem: Rust / Framework Anchor</div>
         </div>
       </div>
 
       {/* RIGHT: AST Inspector & Audit Panel */}
-      <div className="w-full lg:w-[420px] flex flex-col bg-[#0d1117] border-t lg:border-t-0 border-[#30363d] shrink-0">
+      <div className="w-full lg:w-[420px] flex flex-col bg-[#0d1117] border-t lg:border-t-0 border-[#30363d] shrink-0 max-h-[500px] lg:max-h-none overflow-y-auto">
         {/* Tab Headers */}
-        <div className="flex items-center justify-between px-3 py-2 bg-[#161b22] border-b border-[#30363d]">
+        <div className="flex items-center justify-between px-3 py-2 bg-[#161b22] border-b border-[#30363d] sticky top-0 z-10">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setActiveRightTab('audit')}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
                 activeRightTab === 'audit'
                   ? 'bg-[#21262d] text-[#58a6ff] border border-[#30363d]'
                   : 'text-[#8b949e] hover:text-[#c9d1d9]'
               }`}
             >
               <Shield className="w-3.5 h-3.5 text-[#58a6ff]" />
-              <span>Security Audit</span>
+              <span>Auditoria</span>
               <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#1f6feb26] text-[#58a6ff] font-mono border border-[#30363d]">
                 {auditIssues.length}
               </span>
@@ -158,19 +199,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
             <button
               onClick={() => setActiveRightTab('ast')}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded transition-colors ${
                 activeRightTab === 'ast'
                   ? 'bg-[#21262d] text-[#58a6ff] border border-[#30363d]'
                   : 'text-[#8b949e] hover:text-[#c9d1d9]'
               }`}
             >
               <Layers className="w-3.5 h-3.5 text-[#d2a8ff]" />
-              <span>AST & PDA Seeds</span>
+              <span>Estrutura AST</span>
             </button>
           </div>
 
           <div className="font-mono text-xs font-bold text-[#c9d1d9] flex items-center gap-1 bg-[#0d1117] px-2 py-0.5 rounded border border-[#30363d]">
-            <span>Score:</span>
+            <span>Nota:</span>
             <span className={auditScore >= 80 ? 'text-[#7ee787]' : 'text-[#ffa657]'}>
               {auditScore}/100
             </span>
@@ -179,7 +220,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
         {/* TAB 1: AUDIT BREAKDOWN */}
         {activeRightTab === 'audit' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
             {auditIssues.map((issue) => (
               <div
                 key={issue.id}
@@ -198,14 +239,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
                 <div className="pt-1 border-t border-[#30363d] flex flex-col gap-1.5">
                   <div className="text-[11px] text-[#a5d6ff] font-mono bg-[#0d1117] p-2 rounded border border-[#30363d]">
-                    <span className="font-bold text-[#58a6ff]">Recommendation:</span> {issue.recommendation}
+                    <span className="font-bold text-[#58a6ff]">Recomendação:</span> {issue.recommendation}
                   </div>
 
                   {issue.fixAction && (
                     <button
                       onClick={() => {
                         if (issue.fixAction?.patchCode) {
-                          alert(`Suggested fix snippet:\n\n${issue.fixAction.patchCode}`);
+                          alert(`Código de correção sugerido:\n\n${issue.fixAction.patchCode}`);
                         }
                       }}
                       className="text-[11px] font-semibold text-[#7ee787] hover:text-white bg-[#238636]/30 hover:bg-[#238636] px-2.5 py-1 rounded border border-[#238636]/60 transition-colors self-start flex items-center gap-1"
@@ -222,18 +263,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
         {/* TAB 2: AST & CONTRACT STRUCTURE */}
         {activeRightTab === 'ast' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 font-mono text-xs">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 font-mono text-xs">
             {/* Program Identifier */}
             <div className="p-3 bg-[#161b22] border border-[#30363d] rounded-lg space-y-2">
               <div className="text-xs font-bold text-[#d2a8ff] uppercase tracking-wider flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5" />
-                <span>Program Declaration</span>
+                <span>Declaração do Programa</span>
               </div>
               <div className="text-[#c9d1d9] text-[11px] bg-[#0d1117] p-2 rounded border border-[#30363d] break-all">
                 declare_id!(&quot;Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS&quot;);
               </div>
               <p className="text-[11px] text-[#8b949e] font-sans">
-                Matches current program ID deployed on localnet/devnet simulator.
+                Corresponde ao ID de programa atual implantado no simulador de localnet/devnet.
               </p>
             </div>
 
@@ -241,33 +282,33 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             <div className="p-3 bg-[#161b22] border border-[#30363d] rounded-lg space-y-2">
               <div className="text-xs font-bold text-[#58a6ff] uppercase tracking-wider flex items-center gap-1.5">
                 <ChevronRight className="w-3.5 h-3.5" />
-                <span>Instruction Handlers</span>
+                <span>Manipuladores de Instrução</span>
               </div>
               <div className="space-y-1.5">
                 <div className={`p-2 rounded border text-[11px] flex items-center justify-between ${hasInitialize ? 'bg-[#0d1117] border-[#238636]/60 text-[#7ee787]' : 'bg-[#0d1117]/50 border-[#30363d] text-[#8b949e]'}`}>
                   <span>fn initialize(ctx: Context&lt;Initialize&gt;)</span>
-                  <span className="text-[10px] font-bold uppercase">{hasInitialize ? 'Found' : 'Missing'}</span>
+                  <span className="text-[10px] font-bold uppercase">{hasInitialize ? 'Encontrado' : 'Ausente'}</span>
                 </div>
                 <div className={`p-2 rounded border text-[11px] flex items-center justify-between ${hasIncrement ? 'bg-[#0d1117] border-[#238636]/60 text-[#7ee787]' : 'bg-[#0d1117]/50 border-[#30363d] text-[#8b949e]'}`}>
                   <span>fn increment(ctx: Context&lt;Increment&gt;)</span>
-                  <span className="text-[10px] font-bold uppercase">{hasIncrement ? 'Found' : 'Missing'}</span>
+                  <span className="text-[10px] font-bold uppercase">{hasIncrement ? 'Encontrado' : 'Ausente'}</span>
                 </div>
                 {hasDecrement && (
                   <div className="p-2 rounded border text-[11px] flex items-center justify-between bg-[#0d1117] border-[#238636]/60 text-[#7ee787]">
                     <span>fn decrement(ctx: Context&lt;Decrement&gt;)</span>
-                    <span className="text-[10px] font-bold uppercase">Found</span>
+                    <span className="text-[10px] font-bold uppercase">Encontrado</span>
                   </div>
                 )}
                 {hasReset && (
                   <div className="p-2 rounded border text-[11px] flex items-center justify-between bg-[#0d1117] border-[#238636]/60 text-[#7ee787]">
                     <span>fn reset(ctx: Context&lt;Reset&gt;)</span>
-                    <span className="text-[10px] font-bold uppercase">Found</span>
+                    <span className="text-[10px] font-bold uppercase">Encontrado</span>
                   </div>
                 )}
                 {hasClose && (
                   <div className="p-2 rounded border text-[11px] flex items-center justify-between bg-[#0d1117] border-[#238636]/60 text-[#7ee787]">
                     <span>fn close(ctx: Context&lt;CloseAccount&gt;)</span>
-                    <span className="text-[10px] font-bold uppercase">Found</span>
+                    <span className="text-[10px] font-bold uppercase">Encontrado</span>
                   </div>
                 )}
               </div>
@@ -277,28 +318,28 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             <div className="p-3 bg-[#161b22] border border-[#30363d] rounded-lg space-y-2">
               <div className="text-xs font-bold text-[#ffa657] uppercase tracking-wider flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5" />
-                <span>Account PDA Constraints</span>
+                <span>Restrições PDA da Conta</span>
               </div>
               <div className="bg-[#0d1117] p-2.5 rounded border border-[#30363d] space-y-1.5 text-[11px]">
                 <div className="flex items-center justify-between text-[#c9d1d9] font-bold border-b border-[#30363d] pb-1">
-                  <span>Constraint Parameter</span>
-                  <span>Validation Status</span>
+                  <span>Parâmetro de Restrição</span>
+                  <span>Status de Validação</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#8b949e]">seeds = [b&quot;counter&quot;, authority]</span>
-                  <span className={hasSeeds ? 'text-[#7ee787] font-bold' : 'text-[#ff7b72]'}>
-                    {hasSeeds ? 'Valid Seed Array' : 'Missing / Invalid'}
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[#8b949e] truncate">seeds = [b&quot;counter&quot;, authority]</span>
+                  <span className={hasSeeds ? 'text-[#7ee787] font-bold shrink-0' : 'text-[#ff7b72] shrink-0'}>
+                    {hasSeeds ? 'Vetor de Seeds Válido' : 'Inválido / Ausente'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#8b949e]">has_one = authority</span>
-                  <span className={hasHasOne ? 'text-[#7ee787] font-bold' : 'text-[#ff7b72]'}>
-                    {hasHasOne ? 'Access Control Set' : 'Missing Check'}
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[#8b949e] truncate">has_one = authority</span>
+                  <span className={hasHasOne ? 'text-[#7ee787] font-bold shrink-0' : 'text-[#ff7b72] shrink-0'}>
+                    {hasHasOne ? 'Controle de Acesso OK' : 'Falta Checagem'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#8b949e]">space = 8 + 32 + 8 + 1</span>
-                  <span className="text-[#7ee787] font-bold">49 Bytes Allocated</span>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[#8b949e] truncate">space = 8 + 32 + 8 + 1</span>
+                  <span className="text-[#7ee787] font-bold shrink-0">49 Bytes Alocados</span>
                 </div>
               </div>
             </div>

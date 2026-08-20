@@ -10,23 +10,23 @@ interface ExecutionSandboxProps {
 const INITIAL_WALLETS: VirtualWallet[] = [
   {
     id: 'alice',
-    name: 'Alice (Owner / Authority)',
+    name: 'Alice (Proprietária / Autoridade)',
     pubkey: '5x39H1K7M2p4Q8v6L9x2Y1Z3W4V5U6T7S8R9Q1P2O3N4',
-    role: 'Owner (Authority)',
+    role: 'Proprietária (Autoridade)',
     balanceSol: 10.0,
   },
   {
     id: 'bob',
-    name: 'Bob (Attacker / Unpermitted)',
+    name: 'Bob (Atacante / Não Autorizado)',
     pubkey: '8y22J9L3N1m7P5v9R2x4Z6A8B0C1D2E3F4G5H6I7J8K9',
-    role: 'Attacker / Impersonator',
+    role: 'Atacante / Impostor',
     balanceSol: 5.0,
   },
   {
     id: 'charlie',
-    name: 'Charlie (User 2)',
+    name: 'Charlie (Usuário 2)',
     pubkey: '3kP71M8N2p9Q4v6L8x1Y2Z3W5V6U7T8S9R0Q2P3O4N5',
-    role: 'Standard User',
+    role: 'Usuário Padrão',
     balanceSol: 5.0,
   },
 ];
@@ -58,13 +58,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
       timestamp: new Date().toLocaleTimeString(),
       signature: '5kJ8xP2...v9Z4',
       signer: INITIAL_WALLETS[0].pubkey,
-      instruction: 'SystemProgram::CreateAccount (Pending)',
+      instruction: 'SystemProgram::CreateAccount (Pendente)',
       status: 'success',
       computeUnitsUsed: 150,
       logs: [
-        `Program ${programId} invoke [1]`,
-        'Program log: Virtual Solana Localnet cluster ready',
-        'Program log: Rent-exempt account space: 49 bytes (1,238,400 lamports)',
+        `Programa ${programId} invocado [1]`,
+        'Log do programa: Cluster de Localnet Solana Virtual Pronto',
+        'Log do programa: Espaço de conta isento de aluguel: 49 bytes (1.238.400 lamports)',
       ],
     },
   ]);
@@ -91,13 +91,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
           status: 'error',
           computeUnitsUsed: 1200,
           logs: [
-            `Program ${programId} invoke [1]`,
-            `Program log: Instruction: Initialize`,
-            `AnchorError: Account ${counterState.address} is already initialized`,
-            `Program ${programId} consumed 1200 of 200000 compute units`,
-            `Program ${programId} failed: custom program error: 0x0`,
+            `Programa ${programId} invocado [1]`,
+            `Log do programa: Instrução: Initialize`,
+            `AnchorError: Conta ${counterState.address} já foi inicializada`,
+            `Programa ${programId} consumiu 1200 de 200000 unidades de computação`,
+            `Programa ${programId} falhou: erro de programa customizado: 0x0`,
           ],
-          errorMessage: 'AccountAlreadyInitialized: Account is already in use.',
+          errorMessage: 'AccountAlreadyInitialized: A conta já está em uso.',
         };
         setTxLogs((prev) => [newLog, ...prev]);
         return;
@@ -128,14 +128,14 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         status: 'success',
         computeUnitsUsed: 3840,
         logs: [
-          `Program ${programId} invoke [1]`,
-          'Program log: Instruction: Initialize',
-          `Program log: Created PDA ${counterState.address} with bump ${counterState.bump}`,
-          `Program log: Assigned authority to ${activeWallet.pubkey}`,
-          `Program ${programId} consumed 3840 of 200000 compute units`,
-          `Program ${programId} success`,
+          `Programa ${programId} invocado [1]`,
+          'Log do programa: Instrução: Initialize',
+          `Log do programa: Criado PDA ${counterState.address} com bump ${counterState.bump}`,
+          `Log do programa: Autoridade atribuída a ${activeWallet.pubkey}`,
+          `Programa ${programId} consumiu 3840 de 200000 unidades de computação`,
+          `Programa ${programId} concluído com sucesso`,
         ],
-        stateDelta: `Created UserCounter PDA (49 bytes, ${rentLamports} lamports)`,
+        stateDelta: `Criado PDA UserCounter (49 bytes, ${rentLamports} lamports)`,
       };
       setTxLogs((prev) => [newLog, ...prev]);
       return;
@@ -152,13 +152,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         status: 'error',
         computeUnitsUsed: 800,
         logs: [
-          `Program ${programId} invoke [1]`,
-          `Program log: Instruction: ${instructionName}`,
-          `AnchorError: AccountNotInitialized for PDA ${counterState.address}`,
-          `Program ${programId} consumed 800 of 200000 compute units`,
-          `Program ${programId} failed: AccountNotInitialized`,
+          `Programa ${programId} invocado [1]`,
+          `Log do programa: Instrução: ${instructionName}`,
+          `AnchorError: AccountNotInitialized para o PDA ${counterState.address}`,
+          `Programa ${programId} consumiu 800 de 200000 unidades de computação`,
+          `Programa ${programId} falhou: AccountNotInitialized`,
         ],
-        errorMessage: 'AccountNotInitialized: Could not deserialize account state.',
+        errorMessage: 'AccountNotInitialized: Não foi possível desserializar a conta (não inicializada).',
       };
       setTxLogs((prev) => [newLog, ...prev]);
       return;
@@ -176,14 +176,14 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         status: 'error',
         computeUnitsUsed: 1450,
         logs: [
-          `Program ${programId} invoke [1]`,
-          `Program log: Instruction: ${instructionName}`,
-          `AnchorError: ConstraintHasOne violated by signer ${activeWallet.pubkey}`,
-          `Expected authority: ${counterState.authority}`,
-          `Program ${programId} consumed 1450 of 200000 compute units`,
-          `Program ${programId} failed: ConstraintHasOneMismatch`,
+          `Programa ${programId} invocado [1]`,
+          `Log do programa: Instrução: ${instructionName}`,
+          `AnchorError: ConstraintHasOne violado pelo assinante ${activeWallet.pubkey}`,
+          `Autoridade esperada: ${counterState.authority}`,
+          `Programa ${programId} consumiu 1450 de 200000 unidades de computação`,
+          `Programa ${programId} falhou: ConstraintHasOneMismatch`,
         ],
-        errorMessage: 'ConstraintHasOne: A has_one constraint was violated. Signer is not the account authority.',
+        errorMessage: 'ConstraintHasOne: A restrição has_one foi violada. O assinante não é a autoridade da conta.',
       };
       setTxLogs((prev) => [newLog, ...prev]);
       return;
@@ -201,13 +201,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         status: 'success',
         computeUnitsUsed: 2150,
         logs: [
-          `Program ${programId} invoke [1]`,
-          'Program log: Instruction: Increment',
-          `Program log: Count updated from ${counterState.count} to ${counterState.count + 1}`,
-          `Program ${programId} consumed 2150 of 200000 compute units`,
-          `Program ${programId} success`,
+          `Programa ${programId} invocado [1]`,
+          'Log do programa: Instrução: Increment',
+          `Log do programa: Contador atualizado de ${counterState.count} para ${counterState.count + 1}`,
+          `Programa ${programId} consumiu 2150 de 200000 unidades de computação`,
+          `Programa ${programId} concluído com sucesso`,
         ],
-        stateDelta: `Count updated to ${counterState.count + 1}`,
+        stateDelta: `Contador incrementado para ${counterState.count + 1}`,
       };
       setTxLogs((prev) => [newLog, ...prev]);
     } else if (instructionName === 'decrement') {
@@ -221,13 +221,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
           status: 'error',
           computeUnitsUsed: 1100,
           logs: [
-            `Program ${programId} invoke [1]`,
-            'Program log: Instruction: Decrement',
-            'Program log: Error: Counter underflow attempt (count is 0)',
-            `Program ${programId} consumed 1100 of 200000 compute units`,
-            'Program failed: Custom program error 0x1',
+            `Programa ${programId} invocado [1]`,
+            'Log do programa: Instrução: Decrement',
+            'Log do programa: Erro: Tentativa de underflow no contador (valor é 0)',
+            `Programa ${programId} consumiu 1100 de 200000 unidades de computação`,
+            'Programa falhou: Erro de programa customizado 0x1',
           ],
-          errorMessage: 'Underflow: Counter cannot be decremented below 0.',
+          errorMessage: 'Underflow: O contador não pode ser decrementado abaixo de 0.',
         };
         setTxLogs((prev) => [newLog, ...prev]);
         return;
@@ -242,13 +242,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         status: 'success',
         computeUnitsUsed: 2100,
         logs: [
-          `Program ${programId} invoke [1]`,
-          'Program log: Instruction: Decrement',
-          `Program log: Count updated to ${counterState.count - 1}`,
-          `Program ${programId} consumed 2100 of 200000 compute units`,
-          `Program ${programId} success`,
+          `Programa ${programId} invocado [1]`,
+          'Log do programa: Instrução: Decrement',
+          `Log do programa: Contador atualizado para ${counterState.count - 1}`,
+          `Programa ${programId} consumiu 2100 de 200000 unidades de computação`,
+          `Programa ${programId} concluído com sucesso`,
         ],
-        stateDelta: `Count updated to ${counterState.count - 1}`,
+        stateDelta: `Contador decrementado para ${counterState.count - 1}`,
       };
       setTxLogs((prev) => [newLog, ...prev]);
     } else if (instructionName === 'reset') {
@@ -262,13 +262,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         status: 'success',
         computeUnitsUsed: 1900,
         logs: [
-          `Program ${programId} invoke [1]`,
-          'Program log: Instruction: Reset',
-          'Program log: Counter state reset to 0',
-          `Program ${programId} consumed 1900 of 200000 compute units`,
-          `Program ${programId} success`,
+          `Programa ${programId} invocado [1]`,
+          'Log do programa: Instrução: Reset',
+          'Log do programa: Estado do contador reinicializado para 0',
+          `Programa ${programId} consumiu 1900 de 200000 unidades de computação`,
+          `Programa ${programId} concluído com sucesso`,
         ],
-        stateDelta: 'Count reset to 0',
+        stateDelta: 'Contador zerado com sucesso',
       };
       setTxLogs((prev) => [newLog, ...prev]);
     } else if (instructionName === 'close') {
@@ -288,14 +288,14 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         status: 'success',
         computeUnitsUsed: 2900,
         logs: [
-          `Program ${programId} invoke [1]`,
-          'Program log: Instruction: CloseAccount',
-          `Program log: Closed PDA ${counterState.address}`,
-          `Program log: Refunded ${rentLamports} lamports to ${activeWallet.pubkey}`,
-          `Program ${programId} consumed 2900 of 200000 compute units`,
-          `Program ${programId} success`,
+          `Programa ${programId} invocado [1]`,
+          'Log do programa: Instrução: CloseAccount',
+          `Log do programa: Encerrou PDA ${counterState.address}`,
+          `Log do programa: Reembolsou ${rentLamports} lamports para ${activeWallet.pubkey}`,
+          `Programa ${programId} consumiu 2900 de 200000 unidades de computação`,
+          `Programa ${programId} concluído com sucesso`,
         ],
-        stateDelta: 'Account closed & rent refunded',
+        stateDelta: 'Conta encerrada e aluguel reembolsado',
       };
       setTxLogs((prev) => [newLog, ...prev]);
     }
@@ -325,11 +325,11 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             <div className="flex items-center gap-2">
               <Terminal className="w-5 h-5 text-[#7ee787]" />
               <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[#c9d1d9]">
-                Solana Instruction Execution & Security Sandbox
+                Simulador de Execução de Instruções & Sandbox Solana
               </h1>
             </div>
             <p className="text-xs text-[#8b949e] mt-0.5">
-              Test Anchor instruction handlers, state transitions, byte deserialization, and multi-wallet access control in real time.
+              Teste manipuladores de instruções Anchor, transições de estado, desserialização de memória e controle de acesso em tempo real.
             </p>
           </div>
 
@@ -338,7 +338,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors shrink-0 self-start sm:self-auto"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Localnet State</span>
+            <span>Reiniciar Localnet</span>
           </button>
         </div>
 
@@ -348,7 +348,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
           <div className="p-4 bg-[#161b22] border border-[#30363d] rounded-lg space-y-3">
             <span className="text-xs font-mono font-bold uppercase text-[#d2a8ff] flex items-center gap-1.5">
               <Wallet className="w-3.5 h-3.5" />
-              <span>Select Active Signer Wallet</span>
+              <span>Selecionar Carteira Assinante</span>
             </span>
 
             <div className="space-y-2">
@@ -381,10 +381,10 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             <div className="flex items-center justify-between border-b border-[#30363d] pb-2">
               <span className="text-xs font-mono font-bold uppercase text-[#7ee787] flex items-center gap-1.5">
                 <Play className="w-3.5 h-3.5 text-[#7ee787]" />
-                <span>Execute Anchor Instruction</span>
+                <span>Executar Instrução Anchor</span>
               </span>
               <span className="text-xs font-mono text-[#8b949e]">
-                Signer: <strong className="text-[#d2a8ff]">{activeWallet.name}</strong>
+                Assinante: <strong className="text-[#d2a8ff]">{activeWallet.name}</strong>
               </span>
             </div>
 
@@ -400,7 +400,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
                 }`}
               >
                 <span>initialize()</span>
-                <span className="text-[10px] opacity-80 font-normal">Creates PDA (49B)</span>
+                <span className="text-[10px] opacity-80 font-normal">Cria PDA (49B)</span>
               </button>
 
               <button
@@ -413,7 +413,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
                 }`}
               >
                 <span>increment()</span>
-                <span className="text-[10px] opacity-80 font-normal">count += 1</span>
+                <span className="text-[10px] opacity-80 font-normal">contador += 1</span>
               </button>
 
               <button
@@ -426,7 +426,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
                 }`}
               >
                 <span>decrement()</span>
-                <span className="text-[10px] opacity-80 font-normal">count -= 1</span>
+                <span className="text-[10px] opacity-80 font-normal">contador -= 1</span>
               </button>
 
               <button
@@ -439,7 +439,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
                 }`}
               >
                 <span>reset()</span>
-                <span className="text-[10px] opacity-80 font-normal">count = 0</span>
+                <span className="text-[10px] opacity-80 font-normal">contador = 0</span>
               </button>
 
               <button
@@ -452,7 +452,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
                 }`}
               >
                 <span>close()</span>
-                <span className="text-[10px] opacity-80 font-normal">Refund Rent SOL</span>
+                <span className="text-[10px] opacity-80 font-normal">Encerrar & Devolver SOL</span>
               </button>
             </div>
 
@@ -461,7 +461,7 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
               <div className="flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-[#ff7b72] shrink-0" />
                 <span className="text-xs text-[#c9d1d9]">
-                  <strong>Access Control Test:</strong> Select <em>Bob (Attacker)</em> and click <em>increment()</em> to test if Anchor rejects unauthorized signers with <code className="text-[#ff7b72]">HasOneMismatch</code>.
+                  <strong>Teste de Controle de Acesso:</strong> Selecione <em>Bob (Atacante)</em> e clique em <em>increment()</em> para testar se o Anchor rejeita assinantes não autorizados com o erro <code className="text-[#ff7b72]">ConstraintHasOneMismatch</code>.
                 </span>
               </div>
             </div>
@@ -475,32 +475,32 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             <div className="flex items-center justify-between border-b border-[#30363d] pb-2">
               <span className="text-xs font-mono font-bold uppercase text-[#58a6ff] flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5" />
-                <span>On-Chain Account Byte Inspector</span>
+                <span>Inspetor de Memória de Bytes da Conta On-Chain</span>
               </span>
               <span className={`px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded ${counterState.isInitialized ? 'bg-[#238636]/20 text-[#7ee787] border border-[#238636]/60' : 'bg-[#0d1117] text-[#8b949e] border border-[#30363d]'}`}>
-                {counterState.isInitialized ? 'Active (Rent Exempt)' : 'Uninitialized (0B)'}
+                {counterState.isInitialized ? 'Ativa (Isenta de Aluguel)' : 'Não Inicializada (0B)'}
               </span>
             </div>
 
             {/* Account Metadata */}
             <div className="space-y-2 text-xs font-mono">
               <div className="flex items-center justify-between p-2 bg-[#0d1117] rounded border border-[#30363d]">
-                <span className="text-[#8b949e]">PDA Address:</span>
+                <span className="text-[#8b949e]">Endereço PDA:</span>
                 <span className="text-[#d2a8ff] font-bold truncate max-w-[220px]">{counterState.address}</span>
               </div>
 
               <div className="flex items-center justify-between p-2 bg-[#0d1117] rounded border border-[#30363d]">
-                <span className="text-[#8b949e]">Owner Authority:</span>
+                <span className="text-[#8b949e]">Autoridade Proprietária:</span>
                 <span className="text-[#58a6ff] font-bold truncate max-w-[220px]">{counterState.authority}</span>
               </div>
 
               <div className="flex items-center justify-between p-2 bg-[#0d1117] rounded border border-[#30363d]">
-                <span className="text-[#8b949e]">Current Count (u64):</span>
+                <span className="text-[#8b949e]">Contador Atual (u64):</span>
                 <span className="text-[#ffa657] text-sm font-bold">{counterState.count}</span>
               </div>
 
               <div className="flex items-center justify-between p-2 bg-[#0d1117] rounded border border-[#30363d]">
-                <span className="text-[#8b949e]">Bump Seed (u8):</span>
+                <span className="text-[#8b949e]">Seed do Bump (u8):</span>
                 <span className="text-[#7ee787] font-bold">{counterState.bump}</span>
               </div>
             </div>
@@ -508,22 +508,22 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             {/* Account Byte Memory Layout */}
             <div className="p-3 bg-[#0d1117] border border-[#30363d] rounded-lg space-y-2 font-mono text-[11px]">
               <span className="text-[#8b949e] font-bold uppercase block border-b border-[#30363d] pb-1">
-                49-Byte Memory Layout Mapping
+                Mapeamento do Layout de Memória (49 Bytes)
               </span>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between p-1.5 bg-[#161b22] border border-[#30363d] rounded">
-                  <span className="text-[#d2a8ff] font-semibold">Bytes 0..8 (8B): Discriminator</span>
+                  <span className="text-[#d2a8ff] font-semibold">Bytes 0..8 (8B): Discriminador Anchor</span>
                   <span className="text-[#8b949e]">{counterState.discriminatorHex}</span>
                 </div>
 
                 <div className="flex items-center justify-between p-1.5 bg-[#161b22] border border-[#30363d] rounded">
-                  <span className="text-[#58a6ff] font-semibold">Bytes 8..40 (32B): Authority</span>
+                  <span className="text-[#58a6ff] font-semibold">Bytes 8..40 (32B): Autoridade (Pubkey)</span>
                   <span className="text-[#8b949e] truncate max-w-[150px]">{counterState.authority}</span>
                 </div>
 
                 <div className="flex items-center justify-between p-1.5 bg-[#161b22] border border-[#30363d] rounded">
-                  <span className="text-[#ffa657] font-semibold">Bytes 40..48 (8B): Count (u64)</span>
+                  <span className="text-[#ffa657] font-semibold">Bytes 40..48 (8B): Contador (u64)</span>
                   <span className="text-[#ffa657] font-bold">0x{counterState.count.toString(16).padStart(16, '0')}</span>
                 </div>
 
@@ -540,15 +540,15 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             <div className="flex items-center justify-between border-b border-[#30363d] pb-2">
               <span className="text-xs font-mono font-bold uppercase text-[#7ee787] flex items-center gap-1.5">
                 <Terminal className="w-3.5 h-3.5" />
-                <span>Solana Transaction Terminal Output</span>
+                <span>Terminal de Saída de Transações Solana</span>
               </span>
-              <span className="text-[10px] font-mono text-[#8b949e]">Live Log Stream</span>
+              <span className="text-[10px] font-mono text-[#8b949e]">Transmissão ao Vivo</span>
             </div>
 
             <div className="flex-1 max-h-[360px] overflow-y-auto space-y-3 font-mono text-xs bg-[#0d1117] p-3 rounded border border-[#30363d]">
               {txLogs.length === 0 ? (
                 <div className="text-[#8b949e] text-center py-8">
-                  No transactions executed yet. Click an instruction button above.
+                  Nenhuma transação executada ainda. Clique em uma instrução acima.
                 </div>
               ) : (
                 txLogs.map((tx) => (
@@ -557,16 +557,16 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
                       <span className="text-[#8b949e]">{tx.timestamp}</span>
                       <span className={`font-bold flex items-center gap-1 ${tx.status === 'success' ? 'text-[#7ee787]' : 'text-[#ff7b72]'}`}>
                         {tx.status === 'success' ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {tx.instruction.toUpperCase()} {tx.status === 'success' ? 'SUCCESS' : 'FAILED'}
+                        {tx.instruction.toUpperCase()} {tx.status === 'success' ? 'SUCESSO' : 'FALHOU'}
                       </span>
                     </div>
 
                     <div className="text-[10px] text-[#8b949e]">
-                      Sig: {tx.signature} | CU: {tx.computeUnitsUsed}
+                      Assinatura: {tx.signature} | CU Consumidas: {tx.computeUnitsUsed}
                     </div>
 
                     {tx.logs.map((log, i) => (
-                      <div key={i} className={`text-[11px] pl-2 border-l-2 ${log.includes('AnchorError') || log.includes('failed') ? 'border-[#f85149] text-[#ff7b72]' : 'border-[#30363d] text-[#c9d1d9]'}`}>
+                      <div key={i} className={`text-[11px] pl-2 border-l-2 ${log.includes('AnchorError') || log.includes('falhou') ? 'border-[#f85149] text-[#ff7b72]' : 'border-[#30363d] text-[#c9d1d9]'}`}>
                         {log}
                       </div>
                     ))}
