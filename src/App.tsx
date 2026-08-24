@@ -7,11 +7,12 @@ import { PdaVisualizer } from './components/PdaVisualizer';
 import { ExecutionSandbox } from './components/ExecutionSandbox';
 import { SdkAndIdlViewer } from './components/SdkAndIdlViewer';
 import { SecurityGuide } from './components/SecurityGuide';
+import { RustEngineViewer } from './components/RustEngineViewer';
 import { AiAssistantModal } from './components/AiAssistantModal';
 import { GithubPushModal } from './components/GithubPushModal';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'editor' | 'pda' | 'simulator' | 'sdk' | 'guide'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'pda' | 'simulator' | 'sdk' | 'guide' | 'rust_engine'>('editor');
   const [code, setCode] = useState<string>(USER_INITIAL_COUNTER_CODE);
   const [isAiOpen, setIsAiOpen] = useState<boolean>(false);
   const [isGithubOpen, setIsGithubOpen] = useState<boolean>(false);
@@ -60,6 +61,8 @@ export default function App() {
         {activeTab === 'simulator' && <ExecutionSandbox code={code} />}
 
         {activeTab === 'sdk' && <SdkAndIdlViewer code={code} onOpenGithub={() => setIsGithubOpen(true)} />}
+
+        {activeTab === 'rust_engine' && <RustEngineViewer />}
 
         {activeTab === 'guide' && <SecurityGuide />}
       </main>

@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "crates/solana-architect-core"
+]
+resolver = "2"

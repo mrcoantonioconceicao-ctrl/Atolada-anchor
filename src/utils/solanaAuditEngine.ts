@@ -1,8 +1,8 @@
-import { AuditIssue } from '../types/solana';
+import { AuditIssue, AuditReport } from '../types/solana';
 import { runAnchorSecurityAudit } from './solanaUtils';
 
 /**
- * Interface para o resultado da validação sintática pré-auditoria.
+ * Interface para o resultado da validação sintática pré-auditoria (Rust Anchor AST).
  */
 export interface SyntaxValidationResult {
   isValid: boolean;
@@ -12,6 +12,7 @@ export interface SyntaxValidationResult {
 /**
  * Valida a sintaxe básica de um contrato Rust escrito para o framework Anchor
  * antes de executar a análise AST e a auditoria de segurança pesada.
+ * Equivalente a `validate_rust_anchor_syntax` no crate Rust `solana-architect-core`.
  *
  * @param code Código-fonte em Rust/Anchor
  * @returns { isValid: boolean, error?: string }

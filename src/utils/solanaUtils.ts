@@ -1,5 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
-import { AuditIssue, ParsedAnchorContract } from '../types/solana';
+import { AuditIssue, AuditReport, PdaDerivationResult } from '../types/solana';
 
 // Calculate Anchor Account Discriminator: first 8 bytes of SHA-256("account:<AccountName>")
 export async function calculateAnchorDiscriminator(accountName: string): Promise<string> {
@@ -12,11 +12,15 @@ export async function calculateAnchorDiscriminator(accountName: string): Promise
 }
 
 // Derive Solana PDA using @solana/web3.js findProgramAddressSync
-export function deriveCounterPda(programIdStr: string, authorityPubkeyStr: string, seedPrefix: string = 'counter') {
+export function deriveCounterPda(
+  programIdStr: string,
+  authorityPubkeyStr: string,
+  seedPrefix: string = 'counter'
+): PdaDerivationResult {
   try {
     const programId = new PublicKey(programIdStr);
     const authorityPubkey = new PublicKey(authorityPubkeyStr);
-    
+
     const seed1 = Buffer.from(seedPrefix, 'utf8');
     const seed2 = authorityPubkey.toBuffer();
 
@@ -57,24 +61,26 @@ export function calculateRentLamports(spaceBytes: number): number {
   return Math.ceil((spaceBytes + ACCOUNT_STORAGE_OVERHEAD) * LAMPORTS_PER_BYTE_YEAR * EXEMPT_YEARS);
 }
 
-// Static AST & Anchor Code Security Auditor
+// Static AST & Anchor Code Security Auditor (TypeScript Mirror of solana_architect_core::audit)
 export function runAnchorSecurityAudit(code: string): { score: number; issues: AuditIssue[] } {
   const issues: AuditIssue[] = [];
 
   const hasHasOne = code.includes('has_one = authority');
   const hasBumpStore = code.includes('counter.bump = ctx.bumps.counter') || code.includes('bump = counter.bump');
   const hasCheckedMath = code.includes('checked_add') || code.includes('checked_sub');
-  const hasSpace = code.includes('space = 8 + 32 + 8 + 1') || code.includes('space =');
-  const isVulnerableTemplate = code.includes('VULNERABILIDADE') || code.includes('VULNERABILITY');
+  const hasSpaceExact = code.includes('space = 8 + 32 + 8 + 1');
+  const hasSpaceAny = code.includes('space =');
+  const hasSigner = code.includes("Signer<'info>") || code.includes('pub authority: Signer');
+  const hasClose = code.includes('pub fn close') || code.includes('close = authority');
 
-  // Check 1: Access Control - has_one constraint
+  // Regra 1: Controle de Acesso - Restrição has_one
   if (hasHasOne) {
     issues.push({
       id: 'access-control-has-one',
       category: 'Controle de Acesso',
       severity: 'pass',
       title: 'Vinculação de Assinante e Autoridade (`has_one = authority`) Verificada',
-      description: 'A struct `Increment` especifica `has_one = authority`. O Anchor verifica automaticamente se `counter.authority == authority.key()`.',
+      description: 'A restrição `has_one = authority` garante que a chave do signatário corresponda estritamente à autoridade gravada na conta PDA.',
       recommendation: 'Mantenha a validação explícita de autoridade em todos os contextos de instruções mutáveis.',
     });
   } else {
@@ -82,8 +88,8 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
       id: 'access-control-missing-has-one',
       category: 'Controle de Acesso',
       severity: 'critical',
-      title: 'Falta Restrição de Controle de Acesso (`has_one = authority`)',
-      description: 'A struct de instrução não impõe `has_one = authority` nem `constraint = counter.authority == authority.key()`. Qualquer usuário malicioso pode passar uma conta de contador de terceiros e alterar seu estado!',
+      title: 'Falta Restrição Crítica de Controle de Acesso (`has_one = authority`)',
+      description: 'A struct de contas não impõe `has_one = authority`. Qualquer usuário malicioso pode passar uma conta de contador de terceiros e alterar seu estado!',
       recommendation: 'Adicione `has_one = authority` no atributo `#[account(...)]` da struct de contexto.',
       fixAction: {
         label: 'Adicionar restrição `has_one = authority`',
@@ -97,23 +103,23 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
     });
   }
 
-  // Check 2: PDA Seeds & Canonical Bump Verification
+  // Regra 2: Armazenamento e Revalidação de Bump Canônico
   if (hasBumpStore) {
     issues.push({
       id: 'pda-canonical-bump',
-      category: 'PDA',
+      category: 'PDA & Bump Canônico',
       severity: 'pass',
-      title: 'Armazenamento e Revalidação do Bump Canônico',
-      description: 'A seed do bump é salva em cache no `initialize` (`counter.bump = ctx.bumps.counter`) e rechecada em chamadas subsequentes com `bump = counter.bump`.',
+      title: 'Armazenamento e Revalidação do Bump Canônico Validado',
+      description: 'O bump é persistido na inicialização (`counter.bump = ctx.bumps.counter`) e validado com `bump = counter.bump`.',
       recommendation: 'Armazenar e verificar bumps canônicos previne ataques de rederivação na CPU e injeção de bumps arbitrários.',
     });
   } else {
     issues.push({
       id: 'pda-missing-bump',
-      category: 'PDA',
+      category: 'PDA & Bump Canônico',
       severity: 'high',
-      title: 'Falta Armazenamento e Verificação do Bump Canônico',
-      description: 'O contrato não armazena nem verifica `bump = counter.bump`. Sem verificação de bump, atacantes podem enviar seeds não-canônicas ou forçar recálculos caros on-chain.',
+      title: 'Falta Armazenamento e Validação do Bump Canônico',
+      description: 'O contrato não armazena nem verifica `bump = counter.bump`. Sem verificação de bump, atacantes podem forçar recálculos caros on-chain.',
       recommendation: 'Guarde `pub bump: u8` na struct `UserCounter` durante a inicialização e valide com `bump = counter.bump`.',
       fixAction: {
         label: 'Armazenar e Validar Bump',
@@ -122,8 +128,8 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
     });
   }
 
-  // Check 3: Account Space & Rent Allocation
-  if (code.includes('space = 8 + 32 + 8 + 1')) {
+  // Regra 3: Alocação de Espaço e Isenção de Aluguel (49 Bytes)
+  if (hasSpaceExact) {
     issues.push({
       id: 'space-exact-49',
       category: 'Rent / Espaço',
@@ -132,14 +138,18 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
       description: 'Espaço calculado com precisão: 8 (Discriminador Anchor) + 32 (Pubkey) + 8 (u64 contador) + 1 (u8 bump) = 49 bytes.',
       recommendation: 'A alocação exata de espaço otimiza custos de isenção de aluguel e previne erros de alinhamento de memória.',
     });
-  } else if (hasSpace && !code.includes('+ 1')) {
+  } else if (hasSpaceAny) {
     issues.push({
       id: 'space-missing-bump-byte',
       category: 'Rent / Espaço',
       severity: 'medium',
-      title: 'Alocação Insuficiente de Espaço (Faltando Byte do Bump)',
-      description: 'O espaço da conta omite o 1 byte necessário para `u8 bump`. A criação da conta falhará com erro `AccountDataTooSmall` ao tentar gravar o bump.',
+      title: 'Alocação Insuficiente ou Desajustada de Espaço',
+      description: 'O espaço da conta pode omitir o 1 byte necessário para `u8 bump` ou o discriminador Anchor.',
       recommendation: 'Atualize a restrição para `space = 8 + 32 + 8 + 1` (49 bytes).',
+      fixAction: {
+        label: 'Definir space = 8 + 32 + 8 + 1',
+        patchCode: 'space = 8 + 32 + 8 + 1,',
+      },
     });
   } else {
     issues.push({
@@ -152,15 +162,15 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
     });
   }
 
-  // Check 4: Integer Math / Overflow
+  // Regra 4: Aritmética Segura
   if (hasCheckedMath) {
     issues.push({
       id: 'math-checked',
       category: 'Matemática / Overflow',
       severity: 'pass',
-      title: 'Uso de Aritmética Segura (`checked_add`)',
-      description: 'Operações matemáticas usam aritmética checked (`checked_add`), evitando estouro de inteiros silencioso ou travamento do programa.',
-      recommendation: 'Sempre utilize `checked_add` ou configure `OverflowHandlers` no arquivo Cargo.toml.',
+      title: 'Uso de Aritmética Segura (`checked_add`/`checked_sub`)',
+      description: 'Operações matemáticas usam métodos com verificação, evitando estouro de inteiros silencioso ou travamento.',
+      recommendation: 'Sempre utilize `checked_add` e `checked_sub` para prevenir underflow/overflow em tipos primitivos.',
     });
   } else if (code.includes('+= 1') || code.includes('count +=')) {
     issues.push({
@@ -177,11 +187,11 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
     });
   }
 
-  // Check 5: Reentrancy & Signer Checks
-  if (code.includes('pub authority: Signer<\'info\'>')) {
+  // Regra 5: Verificação de Signatário Criptográfico
+  if (hasSigner) {
     issues.push({
       id: 'signer-check-pass',
-      category: 'Controle de Acesso',
+      category: 'Verificação de Assinante',
       severity: 'pass',
       title: 'Validação de Tipo Signer (`Signer<\'info\'>`)',
       description: '`authority` está declarada como `Signer<\'info\'>`, garantindo que o runtime da Solana verifique criptograficamente a assinatura da transação.',
@@ -189,7 +199,28 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
     });
   }
 
-  // Calculate overall score
+  // Regra 6: Encerramento de Conta
+  if (hasClose) {
+    issues.push({
+      id: 'close-account-pass',
+      category: 'Encerramento & Reembolso',
+      severity: 'pass',
+      title: 'Instrução de Encerramento e Reembolso de Rent Presente',
+      description: 'O contrato fornece método seguro para fechar a conta e recuperar o saldo de SOL do aluguel.',
+      recommendation: 'Mantenha a validação `close = authority` para impedir drenagem não autorizada.',
+    });
+  } else {
+    issues.push({
+      id: 'close-account-suggest',
+      category: 'Encerramento & Reembolso',
+      severity: 'info',
+      title: 'Sugestão: Adicionar Instrução de Fechamento de Conta (`close`)',
+      description: 'Permitir o encerramento da conta libera os ~0.0012 SOL de volta para o usuário quando o recurso for descontinuado.',
+      recommendation: 'Implemente um handler com `#[account(mut, close = authority)]`.',
+    });
+  }
+
+  // Calcular Score Global
   let score = 100;
   for (const issue of issues) {
     if (issue.severity === 'critical') score -= 35;
@@ -225,6 +256,18 @@ export function generateAnchorIdl(code: string, programIdStr: string) {
         ],
         args: [],
       },
+      ...(code.includes('pub fn decrement')
+        ? [
+            {
+              name: 'decrement',
+              accounts: [
+                { name: 'counter', isMut: true, isSigner: false },
+                { name: 'authority', isMut: false, isSigner: true },
+              ],
+              args: [],
+            },
+          ]
+        : []),
       ...(code.includes('pub fn reset')
         ? [
             {
@@ -232,6 +275,18 @@ export function generateAnchorIdl(code: string, programIdStr: string) {
               accounts: [
                 { name: 'counter', isMut: true, isSigner: false },
                 { name: 'authority', isMut: false, isSigner: true },
+              ],
+              args: [],
+            },
+          ]
+        : []),
+      ...(code.includes('pub fn close')
+        ? [
+            {
+              name: 'close',
+              accounts: [
+                { name: 'counter', isMut: true, isSigner: false },
+                { name: 'authority', isMut: true, isSigner: true },
               ],
               args: [],
             },

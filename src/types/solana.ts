@@ -1,28 +1,42 @@
+/**
+//! Definições de Tipos e Interfaces do Solana Architect Core
+//! Sincronizado com os structs do crate Rust `crates/solana-architect-core`
+*/
+
+export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'pass';
+
+export interface FixAction {
+  label: string;
+  patchCode: string;
+}
+
 export interface AuditIssue {
   id: string;
-  severity: 'critical' | 'high' | 'medium' | 'low' | 'info' | 'pass';
+  severity: Severity;
   title: string;
   description: string;
   line?: number;
   codeSnippet?: string;
   recommendation: string;
   category:
-    | 'PDA'
-    | 'Access Control'
+    | 'PDA & Bump Canônico'
     | 'Controle de Acesso'
-    | 'Account Validation'
     | 'Validação de Conta'
-    | 'Math / Overflow'
     | 'Matemática / Overflow'
-    | 'Rent / Space'
     | 'Rent / Espaço'
-    | 'Best Practice'
-    | 'Boas Práticas'
+    | 'Encerramento & Reembolso'
+    | 'Verificação de Assinante'
+    | 'Boas Práticas Anchor'
     | string;
-  fixAction?: {
-    label: string;
-    patchCode: string;
-  };
+  fixAction?: FixAction;
+}
+
+export interface AuditReport {
+  score: number;
+  totalRulesEvaluated: number;
+  passedChecks: number;
+  issues: AuditIssue[];
+  isProductionReady: boolean;
 }
 
 export interface VirtualWallet {
@@ -64,28 +78,17 @@ export interface TxLogEntry {
   stateDelta?: string;
 }
 
-export interface ParsedAnchorContract {
-  programName: string;
-  programId: string;
-  instructions: {
-    name: string;
-    args: { name: string; type: string }[];
-    accountsContextName: string;
-  }[];
-  accountsStructs: {
-    name: string;
-    fields: { name: string; type: string; isPubkey: boolean }[];
-    constraints: {
-      accountName: string;
-      isInit?: boolean;
-      isMut?: boolean;
-      seeds?: string[];
-      bump?: string;
-      hasOne?: string;
-      spaceExpr?: string;
-      calculatedSpace?: number;
-    }[];
-  }[];
+export interface PdaDerivationResult {
+  success: boolean;
+  pdaAddress: string;
+  bump: number;
+  seed1Hex: string;
+  seed1String: string;
+  seed2Base58: string;
+  seed2Hex: string;
+  isOffCurve: boolean;
+  iterationsCount?: number;
+  error?: string;
 }
 
 export interface CodeTemplate {

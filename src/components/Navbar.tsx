@@ -2,8 +2,8 @@ import React from 'react';
 import { ShieldCheck, Code2, Cpu, Terminal, FileCode, BookOpen, Sparkles, CheckCircle2, Github } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide';
-  setActiveTab: (tab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide') => void;
+  activeTab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide' | 'rust_engine';
+  setActiveTab: (tab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide' | 'rust_engine') => void;
   auditScore: number;
   onOpenAi: () => void;
   onRunAudit: () => void;
@@ -29,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'pda' as const, label: 'Visualizador de PDA', icon: ShieldCheck, iconColor: 'text-[#58a6ff]' },
     { id: 'simulator' as const, label: 'Simulador de Execução', icon: Terminal, iconColor: 'text-[#7ee787]' },
     { id: 'sdk' as const, label: 'IDL e SDK Client', icon: FileCode, iconColor: 'text-[#ffa657]' },
+    { id: 'rust_engine' as const, label: 'Rust Core Engine', icon: Cpu, iconColor: 'text-[#58a6ff]' },
     { id: 'guide' as const, label: 'Guia de Segurança', icon: BookOpen, iconColor: 'text-[#a5d6ff]' },
   ];
 
