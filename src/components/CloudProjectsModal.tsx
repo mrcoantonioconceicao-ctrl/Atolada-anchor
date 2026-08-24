@@ -33,7 +33,7 @@ export const CloudProjectsModal: React.FC<CloudProjectsModalProps> = ({
   auditScore,
   onLoadContract,
 }) => {
-  const { user, login, logout, cloudContracts, auditHistory, isFirebaseConnected } = useAuth();
+  const { user, login, logout, cloudContracts, auditHistory, isFirebaseConnected, isLoggingIn } = useAuth();
   const [contractTitle, setContractTitle] = useState<string>('Meu Smart Contract Solana');
   const [contractDesc, setContractDesc] = useState<string>('Contrato Anchor auditado e validado.');
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -43,9 +43,10 @@ export const CloudProjectsModal: React.FC<CloudProjectsModalProps> = ({
   if (!isOpen) return null;
 
   const handleSaveCurrent = async () => {
-    if (!user) {
-      await login();
-      return;
+    let currentUser = user;
+    if (!currentUser) {
+      currentUser = await login();
+      if (!currentUser) return;
     }
 
     if (!contractTitle.trim()) return;
@@ -155,10 +156,11 @@ export const CloudProjectsModal: React.FC<CloudProjectsModalProps> = ({
             ) : (
               <button
                 onClick={() => login()}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1f6feb] hover:bg-[#388bfd] rounded transition-colors shadow-sm"
+                disabled={isLoggingIn}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1f6feb] hover:bg-[#388bfd] disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors shadow-sm"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>Entrar com Google</span>
+                <span>{isLoggingIn ? 'Conectando...' : 'Entrar com Google'}</span>
               </button>
             )}
           </div>

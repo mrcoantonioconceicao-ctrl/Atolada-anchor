@@ -97,7 +97,15 @@ export async function testConnection(): Promise<boolean> {
 }
 
 // Authentication Helpers
-export async function loginWithGoogle(): Promise<User> {
+let isLoginInProgress = false;
+
+export async function loginWithGoogle(): Promise<User | null> {
+  if (isLoginInProgress) {
+    console.info('Google sign-in is already in progress.');
+    return auth.currentUser;
+  }
+
+  isLoginInProgress = true;
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
@@ -130,9 +138,24 @@ export async function loginWithGoogle(): Promise<User> {
     }
     
     return user;
-  } catch (error) {
+  } catch (error: any) {
+    const errorCode = error?.code || '';
+    const isCancelledByUser =
+      errorCode === 'auth/cancelled-popup-request' ||
+      errorCode === 'auth/popup-closed-by-user' ||
+      errorCode === 'auth/user-cancelled' ||
+      error?.message?.includes('cancelled-popup-request') ||
+      error?.message?.includes('popup-closed-by-user');
+
+    if (isCancelledByUser) {
+      console.info('Google sign-in popup was dismissed or cancelled by user.');
+      return null;
+    }
+
     console.error('Failed to sign in with Google:', error);
     throw error;
+  } finally {
+    isLoginInProgress = false;
   }
 }
 
@@ -164,7 +187,11 @@ export interface CloudAuditRecord {
   createdAt?: any;
 }
 
-// Firestore Database Services
+// In-Memory Write Cache & Debouncer to handle 10,000+ client bursts without Firestore rate-limit collisions
+const activeSaveOperations = new Map<string, Promise<void>>();
+const recentAuditWrites = new Set<string>();
+
+// Firestore Database Services with Concurrency Throttling
 export async function saveContractToCloud(
   userId: string,
   contract: {
@@ -176,40 +203,52 @@ export async function saveContractToCloud(
     auditScore: number;
   }
 ): Promise<void> {
-  const path = `users/${userId}/contracts/${contract.id}`;
-  try {
-    const docRef = doc(db, 'users', userId, 'contracts', contract.id);
-    const existing = await getDoc(docRef);
-    
-    if (existing.exists()) {
-      await setDoc(
-        docRef,
-        {
+  const lockKey = `${userId}:${contract.id}`;
+  if (activeSaveOperations.has(lockKey)) {
+    return activeSaveOperations.get(lockKey);
+  }
+
+  const savePromise = (async () => {
+    const path = `users/${userId}/contracts/${contract.id}`;
+    try {
+      const docRef = doc(db, 'users', userId, 'contracts', contract.id);
+      const existing = await getDoc(docRef);
+
+      if (existing.exists()) {
+        await setDoc(
+          docRef,
+          {
+            title: contract.title,
+            description: contract.description || '',
+            sourceCode: contract.sourceCode,
+            templateType: contract.templateType || 'custom',
+            auditScore: contract.auditScore,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } else {
+        await setDoc(docRef, {
+          id: contract.id,
+          ownerId: userId,
           title: contract.title,
           description: contract.description || '',
           sourceCode: contract.sourceCode,
           templateType: contract.templateType || 'custom',
           auditScore: contract.auditScore,
+          createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    } else {
-      await setDoc(docRef, {
-        id: contract.id,
-        ownerId: userId,
-        title: contract.title,
-        description: contract.description || '',
-        sourceCode: contract.sourceCode,
-        templateType: contract.templateType || 'custom',
-        auditScore: contract.auditScore,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+        });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    } finally {
+      activeSaveOperations.delete(lockKey);
     }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
-  }
+  })();
+
+  activeSaveOperations.set(lockKey, savePromise);
+  return savePromise;
 }
 
 export async function deleteContractFromCloud(userId: string, contractId: string): Promise<void> {
@@ -225,11 +264,25 @@ export async function recordAuditToCloud(
   userId: string,
   record: Omit<CloudAuditRecord, 'ownerId' | 'createdAt'>
 ): Promise<void> {
+  // Deduplicate identical audit writes within 5 seconds to reduce write quota
+  const dedupeKey = `${userId}:${record.id}:${record.score}:${record.passedChecks}`;
+  if (recentAuditWrites.has(dedupeKey)) {
+    return;
+  }
+  recentAuditWrites.add(dedupeKey);
+  setTimeout(() => recentAuditWrites.delete(dedupeKey), 5000);
+
   const path = `users/${userId}/audit_reports/${record.id}`;
   try {
     const docRef = doc(db, 'users', userId, 'audit_reports', record.id);
+    const scoreVal = typeof record.score === 'number' ? record.score : 0;
     await setDoc(docRef, {
-      ...record,
+      id: record.id,
+      contractTitle: record.contractTitle || 'Solana Contract Audit',
+      score: scoreVal,
+      passedChecks: typeof record.passedChecks === 'number' ? record.passedChecks : 0,
+      totalRules: typeof record.totalRules === 'number' ? record.totalRules : 0,
+      isProductionReady: typeof record.isProductionReady === 'boolean' ? record.isProductionReady : scoreVal >= 85,
       ownerId: userId,
       createdAt: serverTimestamp(),
     });

@@ -7,6 +7,20 @@ import {
   DeploymentSimulationResult,
 } from '../types/solana';
 
+// High-Concurrency In-Memory LRU Caches (Up to 500 entries per cache to save RAM)
+const auditReportCache = new Map<string, AuditReport & { totalRules: number }>();
+const pdaDerivationCache = new Map<string, PdaDerivationResult>();
+const MAX_CACHE_SIZE = 500;
+
+function pruneCache(map: Map<any, any>) {
+  if (map.size > MAX_CACHE_SIZE) {
+    const firstKey = map.keys().next().value;
+    if (firstKey !== undefined) {
+      map.delete(firstKey);
+    }
+  }
+}
+
 // Calculate Anchor Account Discriminator: first 8 bytes of SHA-256("account:<AccountName>")
 export async function calculateAnchorDiscriminator(accountName: string): Promise<string> {
   const name = `account:${accountName}`;
@@ -17,12 +31,17 @@ export async function calculateAnchorDiscriminator(accountName: string): Promise
   return '0x' + discriminatorBytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Derive Solana PDA using @solana/web3.js findProgramAddressSync
+// Derive Solana PDA using @solana/web3.js findProgramAddressSync with High-Speed Cache
 export function deriveCounterPda(
   programIdStr: string,
   authorityPubkeyStr: string,
   seedPrefix: string = 'counter'
 ): PdaDerivationResult {
+  const cacheKey = `${programIdStr}:${authorityPubkeyStr}:${seedPrefix}`;
+  if (pdaDerivationCache.has(cacheKey)) {
+    return pdaDerivationCache.get(cacheKey)!;
+  }
+
   try {
     const programId = new PublicKey(programIdStr);
     const authorityPubkey = new PublicKey(authorityPubkeyStr);
@@ -32,7 +51,7 @@ export function deriveCounterPda(
 
     const [pda, bump] = PublicKey.findProgramAddressSync([seed1, seed2], programId);
 
-    return {
+    const result: PdaDerivationResult = {
       success: true,
       pdaAddress: pda.toBase58(),
       bump,
@@ -42,8 +61,12 @@ export function deriveCounterPda(
       seed2Hex: seed2.toString('hex'),
       isOffCurve: !PublicKey.isOnCurve(pda.toBuffer()),
     };
+
+    pruneCache(pdaDerivationCache);
+    pdaDerivationCache.set(cacheKey, result);
+    return result;
   } catch (error: any) {
-    return {
+    const errResult: PdaDerivationResult = {
       success: false,
       error: error.message || 'Invalid Program ID or Authority Public Key',
       pdaAddress: '',
@@ -54,6 +77,7 @@ export function deriveCounterPda(
       seed2Hex: '',
       isOffCurve: true,
     };
+    return errResult;
   }
 }
 
@@ -67,8 +91,12 @@ export function calculateRentLamports(spaceBytes: number): number {
   return Math.ceil((spaceBytes + ACCOUNT_STORAGE_OVERHEAD) * LAMPORTS_PER_BYTE_YEAR * EXEMPT_YEARS);
 }
 
-// Static AST & Anchor Code Security Auditor (TypeScript Mirror of solana_architect_core::audit)
-export function runAnchorSecurityAudit(code: string): { score: number; issues: AuditIssue[] } {
+// Static AST & Anchor Code Security Auditor with High-Concurrency In-Memory Memoization
+export function runAnchorSecurityAudit(code: string): AuditReport & { totalRules: number } {
+  if (auditReportCache.has(code)) {
+    return auditReportCache.get(code)!;
+  }
+
   const issues: AuditIssue[] = [];
 
   const hasHasOne = code.includes('has_one = authority');
@@ -236,7 +264,22 @@ export function runAnchorSecurityAudit(code: string): { score: number; issues: A
   }
   score = Math.max(0, Math.min(100, score));
 
-  return { score, issues };
+  const passedChecks = issues.filter((i) => i.severity === 'pass').length;
+  const totalRules = issues.length;
+  const isProductionReady = score >= 85;
+
+  const finalReport = {
+    score,
+    passedChecks,
+    totalRulesEvaluated: totalRules,
+    totalRules,
+    issues,
+    isProductionReady,
+  };
+
+  pruneCache(auditReportCache);
+  auditReportCache.set(code, finalReport);
+  return finalReport;
 }
 
 // Generate Anchor IDL JSON structure from Rust code

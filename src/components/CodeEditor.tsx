@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CODE_TEMPLATES } from '../data/defaultContracts';
 import { AuditIssue, AutoFixResult } from '../types/solana';
 import { validateRustSyntax, applyAutoFix, applyAllAutoFixes } from '../utils/solanaAuditEngine';
+import { ExportPdfButton } from './ExportPdfButton';
 import {
   Play,
   RotateCcw,
@@ -20,6 +21,7 @@ import {
   Sparkles,
   Zap,
   Check,
+  FileDown,
 } from 'lucide-react';
 
 interface CodeEditorProps {
@@ -171,6 +173,16 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <ExportPdfButton
+              contractTitle={CODE_TEMPLATES.find((t) => t.id === selectedTemplate)?.title || 'solana_sandbox_counter (lib.rs)'}
+              code={code}
+              auditScore={auditScore}
+              auditIssues={auditIssues}
+              autoFixResult={autoFixFeedback}
+              variant="outline"
+              label="Relatório PDF"
+            />
+
             {onOpenGithub && (
               <button
                 onClick={onOpenGithub}
@@ -361,6 +373,29 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         {/* TAB 1: AUDIT BREAKDOWN */}
         {activeRightTab === 'audit' && (
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+            {/* Executive PDF Export Banner */}
+            <div className="p-3 bg-[#161b22] border border-[#1f6feb]/40 rounded-lg flex items-center justify-between gap-2 shadow-xs">
+              <div>
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#58a6ff]" />
+                  Laudo Executivo de Auditoria (PDF)
+                </span>
+                <p className="text-[11px] text-[#8b949e] mt-0.5">
+                  Gere o PDF com selo de pontuação ({auditScore}/100) e atestado de conformidade Anchor.
+                </p>
+              </div>
+              <ExportPdfButton
+                contractTitle={CODE_TEMPLATES.find((t) => t.id === selectedTemplate)?.title || 'solana_sandbox_counter (lib.rs)'}
+                code={code}
+                auditScore={auditScore}
+                auditIssues={auditIssues}
+                autoFixResult={autoFixFeedback}
+                variant="primary"
+                label="Baixar PDF"
+                className="shrink-0 font-bold"
+              />
+            </div>
+
             {/* Auto-Fix All Global CTA if vulnerabilities exist */}
             {hasFixableVulnerabilities && (
               <div className="p-3 bg-gradient-to-r from-[#1f6feb26] to-[#23863626] border border-[#1f6feb]/40 rounded-lg flex items-center justify-between gap-2 shadow-xs">

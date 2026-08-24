@@ -11,15 +11,16 @@ import {
   OperationType,
 } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, limit } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isLoggingIn: boolean;
   isFirebaseConnected: boolean;
   cloudContracts: CloudContract[];
   auditHistory: CloudAuditRecord[];
-  login: () => Promise<void>;
+  login: () => Promise<User | null>;
   logout: () => Promise<void>;
 }
 
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
   const [cloudContracts, setCloudContracts] = useState<CloudContract[]>([]);
   const [auditHistory, setAuditHistory] = useState<CloudAuditRecord[]>([]);
@@ -52,7 +54,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const contractsPath = `users/${user.uid}/contracts`;
-    const contractsQuery = query(collection(db, 'users', user.uid, 'contracts'));
+    const contractsQuery = query(
+      collection(db, 'users', user.uid, 'contracts'),
+      limit(50)
+    );
     const unsubscribeContracts = onSnapshot(
       contractsQuery,
       (snapshot) => {
@@ -68,7 +73,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const auditsPath = `users/${user.uid}/audit_reports`;
-    const auditsQuery = query(collection(db, 'users', user.uid, 'audit_reports'));
+    const auditsQuery = query(
+      collection(db, 'users', user.uid, 'audit_reports'),
+      limit(50)
+    );
     const unsubscribeAudits = onSnapshot(
       auditsQuery,
       (snapshot) => {
@@ -89,11 +97,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user]);
 
-  const login = async () => {
+  const login = async (): Promise<User | null> => {
+    if (isLoggingIn) return user;
+    setIsLoggingIn(true);
     try {
-      await loginWithGoogle();
-    } catch (err) {
-      console.error('Login error:', err);
+      const loggedUser = await loginWithGoogle();
+      return loggedUser;
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (
+        code !== 'auth/cancelled-popup-request' &&
+        code !== 'auth/popup-closed-by-user' &&
+        code !== 'auth/user-cancelled'
+      ) {
+        console.warn('Login attempt was not completed:', err?.message || err);
+      }
+      return null;
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -110,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         loading,
+        isLoggingIn,
         isFirebaseConnected,
         cloudContracts,
         auditHistory,
