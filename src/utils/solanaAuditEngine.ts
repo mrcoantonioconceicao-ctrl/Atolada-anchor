@@ -25,7 +25,8 @@ export function validateRustSyntax(code: string): SyntaxValidationResult {
   }
 
   // 1. Verifica a presença do import essencial do prelude do Anchor
-  if (!code.includes('use anchor_lang::prelude::*;')) {
+  const normalizedCode = code.replace(/\s+/g, ' ');
+  if (!code.includes('use anchor_lang::prelude::*;') && !normalizedCode.includes('use anchor_lang::prelude::*;')) {
     return {
       isValid: false,
       error: "Importação essencial 'use anchor_lang::prelude::*;' não encontrada no topo do contrato.",

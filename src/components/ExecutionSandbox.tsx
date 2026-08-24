@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { VirtualWallet, UserCounterAccountState, TxLogEntry } from '../types/solana';
 import { deriveCounterPda, calculateAnchorDiscriminator, calculateRentLamports } from '../utils/solanaUtils';
-import { Terminal, Play, ShieldAlert, Cpu, Database, Wallet, Layers, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowRight } from 'lucide-react';
+import { RustUnitTestGenerator } from './RustUnitTestGenerator';
+import { Terminal, Play, ShieldAlert, Cpu, Database, Wallet, Layers, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowRight, Code2 } from 'lucide-react';
 
 interface ExecutionSandboxProps {
   code: string;
@@ -32,6 +33,7 @@ const INITIAL_WALLETS: VirtualWallet[] = [
 ];
 
 export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'unit_tests'>('sandbox');
   const [wallets, setWallets] = useState<VirtualWallet[]>(INITIAL_WALLETS);
   const [activeWalletId, setActiveWalletId] = useState<string>('alice');
   const [programId] = useState<string>('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
@@ -325,25 +327,61 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             <div className="flex items-center gap-2">
               <Terminal className="w-5 h-5 text-[#7ee787]" />
               <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[#c9d1d9]">
-                Simulador de Execução de Instruções & Sandbox Solana
+                Simulador de Execução de Instruções & Testes Rust
               </h1>
             </div>
             <p className="text-xs text-[#8b949e] mt-0.5">
-              Teste manipuladores de instruções Anchor, transições de estado, desserialização de memória e controle de acesso em tempo real.
+              Execute transações On-Chain em tempo real ou gere e teste suítes unitárias em Rust para validação de lógica de negócio.
             </p>
           </div>
 
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {activeSubTab === 'sandbox' && (
+              <button
+                onClick={resetSimulator}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reiniciar Localnet</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Sub-Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-[#30363d] pb-2 font-mono text-xs">
           <button
-            onClick={resetSimulator}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors shrink-0 self-start sm:self-auto"
+            onClick={() => setActiveSubTab('sandbox')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition-all ${
+              activeSubTab === 'sandbox'
+                ? 'bg-[#1f6feb26] text-[#58a6ff] border border-[#1f6feb] font-bold'
+                : 'text-[#8b949e] hover:text-[#c9d1d9] border border-transparent'
+            }`}
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reiniciar Localnet</span>
+            <Terminal className="w-3.5 h-3.5" />
+            <span>Simulador On-Chain Localnet</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('unit_tests')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition-all ${
+              activeSubTab === 'unit_tests'
+                ? 'bg-[#238636]/20 text-[#7ee787] border border-[#238636] font-bold'
+                : 'text-[#8b949e] hover:text-[#c9d1d9] border border-transparent'
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>Testes Unitários em Rust (#[cfg(test)])</span>
           </button>
         </div>
 
-        {/* TOP ROW: WALLETS & CONTROLS */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* RENDER VIEW BASED ON ACTIVE TAB */}
+        {activeSubTab === 'unit_tests' ? (
+          <RustUnitTestGenerator code={code} />
+        ) : (
+          <>
+            {/* TOP ROW: WALLETS & CONTROLS */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Wallet Selector Column */}
           <div className="p-4 bg-[#161b22] border border-[#30363d] rounded-lg space-y-3">
             <span className="text-xs font-mono font-bold uppercase text-[#d2a8ff] flex items-center gap-1.5">
@@ -582,6 +620,8 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

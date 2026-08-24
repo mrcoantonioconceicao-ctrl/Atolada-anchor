@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { generateAnchorIdl, generateTypeScriptClientCode } from '../utils/solanaUtils';
-import { FileCode, Copy, Download, CheckCircle2, Code2, Terminal, Layers } from 'lucide-react';
+import { FileCode, Copy, Download, CheckCircle2, Code2, Terminal, Layers, Github } from 'lucide-react';
 
 interface SdkAndIdlViewerProps {
   code: string;
+  onOpenGithub?: () => void;
 }
 
-export const SdkAndIdlViewer: React.FC<SdkAndIdlViewerProps> = ({ code }) => {
+export const SdkAndIdlViewer: React.FC<SdkAndIdlViewerProps> = ({ code, onOpenGithub }) => {
   const [programId] = useState<string>('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
   const [activeTab, setActiveTab] = useState<'idl' | 'ts' | 'rust' | 'python'>('ts');
   const [copied, setCopied] = useState<boolean>(false);
@@ -120,6 +121,17 @@ print(f"Counter PDA: {counter_pda}, Bump: {bump}")
           </div>
 
           <div className="flex items-center gap-2">
+            {onOpenGithub && (
+              <button
+                onClick={onOpenGithub}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors"
+                title="Exportar IDL e Workspace para o GitHub"
+              >
+                <Github className="w-3.5 h-3.5 text-white" />
+                <span>Exportar para GitHub</span>
+              </button>
+            )}
+
             <button
               onClick={copyToClipboard}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors"

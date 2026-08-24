@@ -8,16 +8,22 @@ import { ExecutionSandbox } from './components/ExecutionSandbox';
 import { SdkAndIdlViewer } from './components/SdkAndIdlViewer';
 import { SecurityGuide } from './components/SecurityGuide';
 import { AiAssistantModal } from './components/AiAssistantModal';
+import { GithubPushModal } from './components/GithubPushModal';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'editor' | 'pda' | 'simulator' | 'sdk' | 'guide'>('editor');
   const [code, setCode] = useState<string>(USER_INITIAL_COUNTER_CODE);
   const [isAiOpen, setIsAiOpen] = useState<boolean>(false);
+  const [isGithubOpen, setIsGithubOpen] = useState<boolean>(false);
 
   // Run security audit on current code state
   const auditResult = useMemo(() => {
     return runAnchorSecurityAudit(code);
   }, [code]);
+
+  const handleRunAudit = () => {
+    setActiveTab('editor');
+  };
 
   const handleResetCode = () => {
     setCode(USER_INITIAL_COUNTER_CODE);
@@ -31,7 +37,8 @@ export default function App() {
         setActiveTab={setActiveTab}
         auditScore={auditResult.score}
         onOpenAi={() => setIsAiOpen(true)}
-        onRunAudit={() => setActiveTab('editor')}
+        onRunAudit={handleRunAudit}
+        onOpenGithub={() => setIsGithubOpen(true)}
       />
 
       {/* Main Content View Switcher */}
@@ -42,8 +49,9 @@ export default function App() {
             setCode={setCode}
             auditIssues={auditResult.issues}
             auditScore={auditResult.score}
-            onRunAudit={() => runAnchorSecurityAudit(code)}
+            onRunAudit={handleRunAudit}
             onResetCode={handleResetCode}
+            onOpenGithub={() => setIsGithubOpen(true)}
           />
         )}
 
@@ -51,7 +59,7 @@ export default function App() {
 
         {activeTab === 'simulator' && <ExecutionSandbox code={code} />}
 
-        {activeTab === 'sdk' && <SdkAndIdlViewer code={code} />}
+        {activeTab === 'sdk' && <SdkAndIdlViewer code={code} onOpenGithub={() => setIsGithubOpen(true)} />}
 
         {activeTab === 'guide' && <SecurityGuide />}
       </main>
@@ -62,6 +70,14 @@ export default function App() {
         onClose={() => setIsAiOpen(false)}
         currentCode={code}
         onInsertCode={(newCode) => setCode(newCode)}
+      />
+
+      {/* Push to GitHub Modal */}
+      <GithubPushModal
+        isOpen={isGithubOpen}
+        onClose={() => setIsGithubOpen(false)}
+        code={code}
+        auditScore={auditResult.score}
       />
     </div>
   );

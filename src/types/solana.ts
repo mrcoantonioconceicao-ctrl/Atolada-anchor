@@ -6,7 +6,19 @@ export interface AuditIssue {
   line?: number;
   codeSnippet?: string;
   recommendation: string;
-  category: 'PDA' | 'Access Control' | 'Account Validation' | 'Math / Overflow' | 'Rent / Space' | 'Best Practice';
+  category:
+    | 'PDA'
+    | 'Access Control'
+    | 'Controle de Acesso'
+    | 'Account Validation'
+    | 'Validação de Conta'
+    | 'Math / Overflow'
+    | 'Matemática / Overflow'
+    | 'Rent / Space'
+    | 'Rent / Espaço'
+    | 'Best Practice'
+    | 'Boas Práticas'
+    | string;
   fixAction?: {
     label: string;
     patchCode: string;
@@ -17,7 +29,14 @@ export interface VirtualWallet {
   id: string;
   name: string;
   pubkey: string;
-  role: 'Owner (Authority)' | 'Attacker / Impersonator' | 'Standard User';
+  role:
+    | 'Owner (Authority)'
+    | 'Proprietária (Autoridade)'
+    | 'Attacker / Impersonator'
+    | 'Atacante / Impostor'
+    | 'Standard User'
+    | 'Usuário Padrão'
+    | string;
   balanceSol: number;
 }
 

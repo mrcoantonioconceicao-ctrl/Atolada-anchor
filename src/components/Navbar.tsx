@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Code2, Cpu, Terminal, FileCode, BookOpen, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Code2, Cpu, Terminal, FileCode, BookOpen, Sparkles, CheckCircle2, Github } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide';
@@ -7,17 +7,7 @@ interface NavbarProps {
   auditScore: number;
   onOpenAi: () => void;
   onRunAudit: () => void;
-}
-
-import React from 'react';
-import { ShieldCheck, Code2, Cpu, Terminal, FileCode, BookOpen, Sparkles, CheckCircle2 } from 'lucide-react';
-
-interface NavbarProps {
-  activeTab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide';
-  setActiveTab: (tab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide') => void;
-  auditScore: number;
-  onOpenAi: () => void;
-  onRunAudit: () => void;
+  onOpenGithub?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -26,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   auditScore,
   onOpenAi,
   onRunAudit,
+  onOpenGithub,
 }) => {
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-[#7ee787] bg-[#238636]/20 border-[#238636]/60';
@@ -90,6 +81,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Primary Actions & Audit Score */}
         <div className="flex items-center gap-2 shrink-0">
+          {onOpenGithub && (
+            <button
+              onClick={onOpenGithub}
+              className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] rounded transition-colors border border-[#30363d] shrink-0 whitespace-nowrap"
+              title="Salvar/Exportar Smart Contract para o GitHub"
+            >
+              <Github className="w-3.5 h-3.5 text-white" />
+              <span className="hidden md:inline">Push GitHub</span>
+              <span className="md:hidden">GitHub</span>
+            </button>
+          )}
+
           <div
             className={`flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1 rounded border font-mono text-xs font-semibold cursor-pointer transition-all ${getScoreColor(
               auditScore

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CODE_TEMPLATES } from '../data/defaultContracts';
 import { AuditIssue } from '../types/solana';
 import { validateRustSyntax } from '../utils/solanaAuditEngine';
-import { Play, RotateCcw, Shield, Layers, Key, Lock, CheckCircle2, AlertTriangle, XCircle, Code, FileText, ChevronRight } from 'lucide-react';
+import { Play, RotateCcw, Shield, Layers, Key, Lock, CheckCircle2, AlertTriangle, XCircle, Code, FileText, ChevronRight, Github } from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
@@ -11,6 +11,7 @@ interface CodeEditorProps {
   auditScore: number;
   onRunAudit: () => void;
   onResetCode: () => void;
+  onOpenGithub?: () => void;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -20,14 +21,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   auditScore,
   onRunAudit,
   onResetCode,
+  onOpenGithub,
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('user_counter');
   const [activeRightTab, setActiveRightTab] = useState<'ast' | 'audit'>('audit');
   const [syntaxError, setSyntaxError] = useState<string | null>(null);
+  const [auditSuccessMessage, setAuditSuccessMessage] = useState<string | null>(null);
+  const [isAuditing, setIsAuditing] = useState<boolean>(false);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplate(templateId);
     setSyntaxError(null);
+    setAuditSuccessMessage(null);
     const found = CODE_TEMPLATES.find((t) => t.id === templateId);
     if (found) {
       setCode(found.code);
@@ -38,16 +43,30 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     const validation = validateRustSyntax(code);
     if (!validation.isValid) {
       setSyntaxError(validation.error || 'Erro de sintaxe Rust/Anchor detectado.');
+      setAuditSuccessMessage(null);
       return;
     }
     setSyntaxError(null);
-    onRunAudit();
+    setIsAuditing(true);
+    setActiveRightTab('audit');
+
+    setTimeout(() => {
+      onRunAudit();
+      setIsAuditing(false);
+      setAuditSuccessMessage(`Auditoria concluída com sucesso! Nota de Segurança: ${auditScore}/100 (${auditIssues.length} observações)`);
+      setTimeout(() => {
+        setAuditSuccessMessage(null);
+      }, 5000);
+    }, 300);
   };
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
     if (syntaxError) {
       setSyntaxError(null);
+    }
+    if (auditSuccessMessage) {
+      setAuditSuccessMessage(null);
     }
   };
 
@@ -104,6 +123,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onOpenGithub && (
+              <button
+                onClick={onOpenGithub}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors"
+                title="Salvar/Exportar Smart Contract para o GitHub"
+              >
+                <Github className="w-3.5 h-3.5 text-white" />
+                <span className="hidden sm:inline">Push para GitHub</span>
+                <span className="sm:hidden">Push</span>
+              </button>
+            )}
+
             <button
               onClick={onResetCode}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#8b949e] hover:text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors"
@@ -116,17 +147,22 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
             <button
               onClick={handleRunAuditWithValidation}
-              className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-white bg-[#238636] hover:bg-[#2ea043] border border-[#30363d] rounded transition-all shadow-sm"
+              disabled={isAuditing}
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-white bg-[#238636] hover:bg-[#2ea043] border border-[#30363d] rounded transition-all shadow-sm disabled:opacity-60"
             >
-              <Play className="w-3.5 h-3.5 text-white fill-white" />
-              <span>Analisar e Auditar</span>
+              {isAuditing ? (
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              ) : (
+                <Play className="w-3.5 h-3.5 text-white fill-white" />
+              )}
+              <span>{isAuditing ? 'Analisando...' : 'Analisar e Auditar'}</span>
             </button>
           </div>
         </div>
 
         {/* Syntax Error Visual Alert Banner */}
         {syntaxError && (
-          <div className="mx-3 my-2 p-3 bg-[#f85149]/15 border border-[#f85149]/60 text-[#ff7b72] rounded-md text-xs flex items-start justify-between gap-2 shadow-md shrink-0">
+          <div className="mx-3 my-2 p-3 bg-[#f85149]/15 border border-[#f85149]/60 text-[#ff7b72] rounded-md text-xs flex items-start justify-between gap-2 shadow-md shrink-0 animate-fadeIn">
             <div className="flex items-start gap-2">
               <XCircle className="w-4 h-4 text-[#ff7b72] shrink-0 mt-0.5" />
               <div>
@@ -136,6 +172,23 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             </div>
             <button
               onClick={() => setSyntaxError(null)}
+              className="text-[#8b949e] hover:text-white px-1.5 py-0.5 text-xs bg-[#21262d] hover:bg-[#30363d] rounded border border-[#30363d] shrink-0"
+              title="Fechar alerta"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Audit Success Toast Banner */}
+        {auditSuccessMessage && (
+          <div className="mx-3 my-2 p-3 bg-[#238636]/15 border border-[#238636]/60 text-[#7ee787] rounded-md text-xs flex items-center justify-between gap-2 shadow-md shrink-0 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#7ee787] shrink-0" />
+              <span className="font-medium text-[12px]">{auditSuccessMessage}</span>
+            </div>
+            <button
+              onClick={() => setAuditSuccessMessage(null)}
               className="text-[#8b949e] hover:text-white px-1.5 py-0.5 text-xs bg-[#21262d] hover:bg-[#30363d] rounded border border-[#30363d] shrink-0"
               title="Fechar alerta"
             >
