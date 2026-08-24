@@ -5,9 +5,30 @@
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'pass';
 
+export interface AutoFixModification {
+  startLine: number;
+  endLine: number;
+  oldSnippet: string;
+  newSnippet: string;
+  description: string;
+}
+
+export interface AutoFixResult {
+  success: boolean;
+  updatedCode: string;
+  ruleApplied: string;
+  vulnerabilityId: string;
+  modifiedLines: AutoFixModification[];
+  auditLog: string[];
+  previousScore: number;
+  newScore: number;
+  error?: string;
+}
+
 export interface FixAction {
   label: string;
   patchCode: string;
+  vulnerabilityId?: string;
 }
 
 export interface AuditIssue {

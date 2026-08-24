@@ -8,39 +8,37 @@
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%26%20Auth-FFCA28?style=for-the-badge&logo=firebase)
 ![GitHub REST API](https://img.shields.io/badge/GitHub%20API-Integration-black?style=for-the-badge&logo=github)
 
-O **Solana Architect** é um ambiente de desenvolvimento (IDE) de ponta a ponta, motor de auditoria de segurança estática AST nativo em **Rust** (`crates/solana-architect-core`), simulador de execução On-Chain localnet (SVM), gerador de testes unitários (`solana-program-test`) e exportador de repositórios Anchor completos para o **GitHub**.
+O **Solana Architect** é uma IDE de engenharia de software e estúdio de auditoria de segurança estática AST nativa em **Rust** (`crates/solana-architect-core`), equipada com **Motor de Correção Automática (Auto-Fix Engine)** em 1 clique, simulador SVM de execução On-Chain localnet, gerador de testes unitários (`solana-program-test`), simulador de dry-run de deploy no Solana Devnet, e exportador de repositórios completos para o **GitHub**.
 
-A plataforma foi projetada para desenvolvedores Web3, estudantes, engenheiros de protocolo e auditores de smart contracts verificarem restrições de contas, validarem a derivação criptográfica de PDAs (*Program Derived Addresses*), simularem transações e vetores de ataque em tempo real, e exportarem projetos Anchor diretamente para a nuvem.
+Projetado para desenvolvedores Web3, pesquisadores de segurança, auditores de smart contracts e engenheiros de protocolo inspecionarem restrições de contas, validarem a derivação criptográfica de PDAs (*Program Derived Addresses*), corrigirem vulnerabilidades automaticamente e implantarem programas seguros na Solana.
 
 ---
 
 ## 📸 Recursos Principais
 
-### 🦀 1. Rust Core Engine & CLI Standalone (`solana-architect-core`)
-- **Motor 100% Nativo em Rust**:
-  - `src/audit.rs`: Motor de auditoria estática de AST, regras Anchor (`has_one`, *canonical bumps*, alocação de rent e checagem de overflow aritmético).
-  - `src/pda.rs`: Algoritmo determinístico de derivação de PDA e busca de bump canônico (255..0) com garantia de pontos fora da curva Ed25519.
+### ⚡ 1. Motor de Correção Automática (Auto-Fix AST Engine)
+- **Correção em 1 Clique (Single & Batch Auto-Fix)**:
+  - **Injeção de Controle de Acesso**: Injeta automaticamente `has_one = authority` e validação de `seeds` nas structs de contexto mutáveis (`Increment`, `Decrement`, `Reset`).
+  - **Bump Canônico**: Armazena e reutiliza `counter.bump = ctx.bumps.counter` e insere `pub bump: u8` na struct `UserCounter`.
+  - **Alinhamento de Memória Exato (49 Bytes)**: Corrige definições de `space = 8 + 32 + 8 + 1` evitando falhas de `AccountDataTooSmall`.
+  - **Aritmética Segura**: Substitui operadores aritméticos diretos (`+=`, `-=`) por `checked_add` e `checked_sub`, adicionando a macro `#[error_code]` com enums tipados.
+  - **Encerramento de Conta**: Adiciona o handler e a struct `CloseAccount` com `close = authority` para reembolso integral de lamports de aluguel (*Rent Exemption*).
+- **Banner de Diff & Logs de Auditoria**: Visualização das linhas alteradas no AST e delta de pontuação instantâneo (ex: 45/100 ➔ 100/100).
+
+### 🦀 2. Rust Core Engine & CLI Standalone (`solana-architect-core`)
+- **Motor 100% Nativo em Rust (Edição 2021)**:
+  - `src/audit.rs`: Motor de auditoria estática com modelo de penalidades e funções `apply_auto_fix` / `apply_all_auto_fixes` nativas.
+  - `src/pda.rs`: Algoritmo determinístico de derivação de PDA e busca de bump canônico (255..0) fora da curva elíptica Ed25519.
   - `src/memory.rs`: Layout de memória SVM para contas de 49 bytes com cálculo de discriminador Anchor (`SHA-256("account:UserCounter")[..8]`) e fórmula canônica de isenção de aluguel (*Rent Exemption*).
   - `src/simulator.rs`: Simulador de máquina de estados SVM com contabilidade de *Compute Units (CU)* e controle de acesso.
   - `src/test_suite.rs`: Gerador dinâmico de testes assíncronos em Rust com `solana-program-test` e `tokio`.
   - `src/bin/cli.rs`: CLI standalone executável (`solana-architect audit|pda|idl|tests`).
 - **Aba Interativa "Rust Core Engine"**: Navegue na árvore de arquivos do crate Rust, copie ou baixe os módulos e execute comandos no terminal CLI simulado em tempo real.
 
-### 🛠️ 2. Rust IDE Web & Auditoria AST Interativa
+### 🛠️ 3. Rust IDE Web & Auditoria AST Interativa
 - **Editor de Código Rust com Syntax Highlighting**: Suporte a templates de contratos Anchor (`user_counter`, `token_vault`, `staking_pda`, `unsecure_counter`).
 - **Análise AST em Tempo Real**: Mapeamento de `declare_id!`, handlers de instrução (`initialize`, `increment`, `decrement`, `reset`, `close`), e verificação de estruturas de conta.
-- **Auditor de Segurança Automático com Quick-Fix**:
-  - Identificação de ausência de `has_one = authority`.
-  - Validação de armazenamento de bumps canônicos.
-  - Detecção de operações aritméticas sem validação (*overflow/underflow* sem `checked_add`/`checked_sub`).
-  - Verificação de instrução de fechamento de conta (`close = authority`).
-
-### 🐙 3. Exportação Direta para o GitHub ("Push to GitHub")
-- **Integração nativa com a REST API do GitHub**:
-  - Autenticação por Personal Access Token (PAT Classic ou Fine-Grained).
-  - Suporte completo para repositórios **Públicos** e **Privados**.
-  - Criação automática de **Novo Repositório** ou atualização de **Repositório Existente**.
-  - **Pacote Workspace Anchor Completo**: Exporta estrutura pronta para produção com `programs/.../lib.rs`, `Anchor.toml`, `Cargo.toml`, `target/idl/*.json`, `client/index.ts` e `README.md` com selo de pontuação da auditoria.
+- **Validador Sintático Pré-Auditoria**: Verificação de balanceamento de chaves, presença de imports de preludes e macros obrigatórias do Anchor.
 
 ### 🧪 4. Execution Sandbox & Simulador de Ataques On-Chain
 - **Rede Localnet Simulada**: Teste a execução de instruções Anchor (`initialize`, `increment`, `decrement`, `reset`, `close`).
@@ -64,15 +62,28 @@ A plataforma foi projetada para desenvolvedores Web3, estudantes, engenheiros de
 - Mapeamento visual das seeds: `seeds = [b"counter", authority.key()]`.
 - Alternância rápida entre carteiras para inspecionar endereços derivados em tempo real.
 
-### 📄 7. Gerador de IDL & Client SDKs
+### 📄 7. Gerador de IDL, SDKs & Devnet Deployment Dry-Run
 - **Gerador de IDL JSON**: Especificação no padrão `@coral-xyz/anchor`.
 - **SDKs Prontos para Uso**:
   - **TypeScript**: `@coral-xyz/anchor` com exemplos em Mocha/Chai.
   - **Rust**: Cliente completo usando `solana-client` e `solana-sdk`.
   - **Python**: Integração pronta com `anchorpy` e `solana-py`.
+- **Simulador de Deploy no Devnet**: Dry-run do pipeline `BPF Loader Upgradeable` com estimativa de tamanho de ELF, taxas de rent e transações RPC simuladas.
 
-### 📚 8. Security Masterclass Guide
-- Guia técnico aprofundado cobrindo armazenamento de bumps, isolamento de autoridade e mitigação de vulnerabilidades comuns da Solana Virtual Machine.
+### 📚 8. Guia Interativo de Segurança & Tour do Sistema
+- **Guia Interativo de Segurança Anchor**:
+  - Comparações visuais lado a lado (Antes vs Depois) de códigos vulneráveis e seguros.
+  - Diagrama de alinhamento de 49 bytes e Calculadora de Rent Exemption dinâmica.
+  - Tabela de referência rápida (Cheat Sheet) de macros Anchor v0.30 (`init`, `payer`, `space`, `seeds`, `bump`, `close`, `has_one`).
+- **Tour Completo do Sistema (9 Etapas)**:
+  - Navegação guiada passo a passo por todos os módulos com atalhos diretos e dicas de especialistas.
+
+### 🐙 9. Exportação Direta para o GitHub ("Push to GitHub") & Cloud Firestore
+- **Integração nativa com a REST API do GitHub**:
+  - Suporte completo para repositórios **Públicos** e **Privados**.
+  - Criação automática de **Novo Repositório** ou atualização de **Repositório Existente**.
+  - **Pacote Workspace Anchor Completo**: Exporta estrutura pronta para produção com `programs/.../lib.rs`, `Anchor.toml`, `Cargo.toml`, `target/idl/*.json`, `client/index.ts` e `README.md` com selo de pontuação da auditoria.
+- **Firebase Firestore & Auth**: Autenticação com Google e salvamento persistente de versões de projetos na nuvem.
 
 ---
 
@@ -92,9 +103,10 @@ Para salvar seus smart contracts no GitHub diretamente pela IDE:
 ## 🛠️ Tecnologias Utilizadas
 
 - **Core Engine (Rust)**: Rust 2021, `solana-program`, `anchor-lang`, `sha2`, `borsh`, `bs58`, `serde`
-- **Frontend**: React 18, TypeScript, Vite
+- **Frontend**: React 18, TypeScript 5, Vite
 - **Estilização**: Tailwind CSS (Tema Dark - Anti-AI Minimalist)
 - **Ícones**: Lucide React
+- **Nuvem & Auth**: Firebase Firestore e Firebase Authentication
 - **Integração GitHub**: GitHub REST API v3
 - **IA**: Google Gemini API SDK (`@google/genai`)
 
@@ -104,7 +116,7 @@ Para salvar seus smart contracts no GitHub diretamente pela IDE:
 
 ### Pré-requisitos
 - **Node.js**: v18.0.0 ou superior
-- **Rust & Cargo**: v1.75.0 ou superior (Opcional para compilação do crate nativo)
+- **Rust & Cargo**: v1.75.0 ou superior (Para compilação nativa do crate)
 
 ### 1. Aplicação Web (React + Vite)
 ```bash
@@ -132,32 +144,34 @@ cargo run --bin solana-architect idl
 ## 📁 Estrutura do Repositório
 
 ```
-├── crates/solana-architect-core/        # Motor nativo em Rust
+├── crates/solana-architect-core/        # Motor nativo em Rust (2021 Edition)
 │   ├── Cargo.toml                       # Manifesto do crate e dependências Solana/Anchor
 │   ├── src/
 │   │   ├── lib.rs                       # Ponto de entrada da biblioteca Rust
-│   │   ├── audit.rs                     # Motor de análise estática de segurança AST
+│   │   ├── audit.rs                     # Motor de auditoria estática AST e Auto-Fix nativo
 │   │   ├── pda.rs                       # Algoritmo de derivação determinística de PDA
 │   │   ├── memory.rs                    # Layout de memória SVM (49B) e cálculo de Rent
 │   │   ├── simulator.rs                 # Simulador de máquina de estados SVM em Rust
 │   │   ├── test_suite.rs                # Gerador de testes solana-program-test
-│   │   ├── types.rs                     # Tipos, Enums de Severidade e DTOs
+│   │   ├── types.rs                     # Tipos, Enums de Severidade e DTOs de Auto-Fix
 │   │   └── bin/
 │   │       └── cli.rs                   # CLI executável solana-architect
 ├── src/                                 # Aplicação Frontend React + TypeScript
 │   ├── components/
 │   │   ├── Navbar.tsx                   # Barra de navegação com seletor de módulos e pontuação
-│   │   ├── CodeEditor.tsx               # IDE Rust + Análise AST + Painel de Auditoria
+│   │   ├── CodeEditor.tsx               # IDE Rust + Análise AST + Auto-Fix Engine + Auditoria
 │   │   ├── RustEngineViewer.tsx         # Explorador do Crate Rust & Terminal CLI Simulator
 │   │   ├── ExecutionSandbox.tsx         # Simulador On-Chain localnet, inspetor de bytes e logs
 │   │   ├── RustUnitTestGenerator.tsx    # Gerador e executor de testes unitários (cargo test)
 │   │   ├── PdaVisualizer.tsx            # Engine de derivação de PDA e fluxo criptográfico
-│   │   ├── SdkAndIdlViewer.tsx          # Gerador de IDL JSON e SDKs (TS, Rust, Python)
-│   │   ├── SecurityGuide.tsx            # Guia de segurança e boas práticas Anchor
+│   │   ├── SdkAndIdlViewer.tsx          # Gerador de IDL JSON, SDKs e Devnet Dry-Run
+│   │   ├── SecurityGuide.tsx            # Guia interativo de segurança e calculadora de Rent
+│   │   ├── SystemTourModal.tsx          # Tour interativo guiado (9 etapas completas)
 │   │   ├── GithubPushModal.tsx          # Modal de exportação para GitHub
+│   │   ├── CloudProjectsModal.tsx       # Gerenciador de projetos Firebase Firestore
 │   │   └── AiAssistantModal.tsx         # Assistente de IA para refatoração e auditoria
 │   ├── utils/
-│   │   ├── solanaAuditEngine.ts         # Engine de auditoria e cálculo de layout de memória
+│   │   ├── solanaAuditEngine.ts         # Engine de auditoria AST, Auto-Fix e validação sintática
 │   │   ├── solanaUtils.ts               # Utilitários de IDL, SDK e geradores de código
 │   │   └── githubService.ts             # Serviço de integração com a API REST do GitHub
 │   ├── types/
@@ -167,29 +181,6 @@ cargo run --bin solana-architect idl
 ├── package.json
 ├── tsconfig.json
 └── README.md
-```
-
----
-
-## 📝 Registro de Atualização do Git (Commit Update)
-
-```git
-commit 8d46ff8876eed9c0a1b2c3d4e5f67890abcdef12
-Author: Marco Antonio <mrcoantonioconceicao@gmail.com>
-Date:   Mon Aug 24 01:38:27 2026 -0700
-
-    feat(core): implement native Rust architecture engine and interactive CLI explorer
-
-    - Implement crates/solana-architect-core workspace in Rust (2021 edition):
-      * src/audit.rs: AST static security audit engine with Severity/Penalty model
-      * src/pda.rs: Canonical bump Ed25519 deterministic search algorithm
-      * src/memory.rs: SVM 49-byte account memory layout, discriminator and rent exemption
-      * src/simulator.rs: Rust state machine execution simulator with Compute Units
-      * src/test_suite.rs: Dynamic solana-program-test and tokio generator
-      * src/bin/cli.rs: Standalone solana-architect executable CLI binary
-    - Add RustEngineViewer component with interactive crate explorer and terminal CLI runner
-    - Integrate Rust Engine tab into Navbar and main application lifecycle
-    - Update README.md with complete Rust workspace documentation, build guide and commit log
 ```
 
 ---

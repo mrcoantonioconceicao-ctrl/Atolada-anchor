@@ -66,6 +66,30 @@ impl AuditCategory {
     }
 }
 
+/// Detalhamento de uma linha modificada pelo motor de autocorreção.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoFixModification {
+    pub start_line: usize,
+    pub end_line: usize,
+    pub old_snippet: String,
+    pub new_snippet: String,
+    pub description: String,
+}
+
+/// Resultado retornado pela execução do motor de autocorreção (Auto-Fix Engine).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoFixResult {
+    pub success: bool,
+    pub updated_code: String,
+    pub rule_applied: String,
+    pub vulnerability_id: String,
+    pub modified_lines: Vec<AutoFixModification>,
+    pub audit_log: Vec<String>,
+    pub previous_score: u32,
+    pub new_score: u32,
+    pub error: Option<String>,
+}
+
 /// Ação de correção automática sugerida pelo motor de auditoria.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FixAction {

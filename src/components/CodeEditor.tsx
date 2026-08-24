@@ -1,8 +1,26 @@
 import React, { useState } from 'react';
 import { CODE_TEMPLATES } from '../data/defaultContracts';
-import { AuditIssue } from '../types/solana';
-import { validateRustSyntax } from '../utils/solanaAuditEngine';
-import { Play, RotateCcw, Shield, Layers, Key, Lock, CheckCircle2, AlertTriangle, XCircle, Code, FileText, ChevronRight, Github } from 'lucide-react';
+import { AuditIssue, AutoFixResult } from '../types/solana';
+import { validateRustSyntax, applyAutoFix, applyAllAutoFixes } from '../utils/solanaAuditEngine';
+import {
+  Play,
+  RotateCcw,
+  Shield,
+  Layers,
+  Key,
+  Lock,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Code,
+  FileText,
+  ChevronRight,
+  Github,
+  Wrench,
+  Sparkles,
+  Zap,
+  Check,
+} from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
@@ -27,12 +45,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const [activeRightTab, setActiveRightTab] = useState<'ast' | 'audit'>('audit');
   const [syntaxError, setSyntaxError] = useState<string | null>(null);
   const [auditSuccessMessage, setAuditSuccessMessage] = useState<string | null>(null);
+  const [autoFixFeedback, setAutoFixFeedback] = useState<AutoFixResult | null>(null);
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplate(templateId);
     setSyntaxError(null);
     setAuditSuccessMessage(null);
+    setAutoFixFeedback(null);
     const found = CODE_TEMPLATES.find((t) => t.id === templateId);
     if (found) {
       setCode(found.code);
@@ -44,6 +64,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     if (!validation.isValid) {
       setSyntaxError(validation.error || 'Erro de sintaxe Rust/Anchor detectado.');
       setAuditSuccessMessage(null);
+      setAutoFixFeedback(null);
       return;
     }
     setSyntaxError(null);
@@ -53,7 +74,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     setTimeout(() => {
       onRunAudit();
       setIsAuditing(false);
-      setAuditSuccessMessage(`Auditoria concluída com sucesso! Nota de Segurança: ${auditScore}/100 (${auditIssues.length} observações)`);
+      setAuditSuccessMessage(`Auditoria concluída! Nota de Segurança: ${auditScore}/100 (${auditIssues.length} verificações)`);
       setTimeout(() => {
         setAuditSuccessMessage(null);
       }, 5000);
@@ -62,13 +83,40 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
-    if (syntaxError) {
-      setSyntaxError(null);
-    }
-    if (auditSuccessMessage) {
-      setAuditSuccessMessage(null);
+    if (syntaxError) setSyntaxError(null);
+    if (auditSuccessMessage) setAuditSuccessMessage(null);
+  };
+
+  const handleSingleAutoFix = (vulnerabilityId: string) => {
+    const result = applyAutoFix(code, vulnerabilityId);
+    if (result.success) {
+      setCode(result.updatedCode);
+      setAutoFixFeedback(result);
+      setTimeout(() => {
+        onRunAudit();
+      }, 100);
+    } else {
+      alert(`Não foi possível aplicar a autocorreção: ${result.error || 'Regra incompatível com a estrutura atual do contrato'}`);
     }
   };
+
+  const handleBatchAutoFix = () => {
+    const result = applyAllAutoFixes(code);
+    if (result.success) {
+      setCode(result.updatedCode);
+      setAutoFixFeedback(result);
+      setTimeout(() => {
+        onRunAudit();
+      }, 100);
+    } else {
+      alert('Nenhuma vulnerabilidade pendente de autocorreção foi encontrada no código.');
+    }
+  };
+
+  // Verificação se há vulnerabilidades passíveis de correção
+  const hasFixableVulnerabilities = auditIssues.some(
+    (i) => i.severity !== 'pass' && (i.fixAction !== undefined || i.id.includes('missing') || i.id.includes('unchecked'))
+  );
 
   // AST Structure Analysis Extraction
   const hasInitialize = code.includes('pub fn initialize');
@@ -180,6 +228,45 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           </div>
         )}
 
+        {/* Auto-Fix Feedback Toast & Diff Banner */}
+        {autoFixFeedback && (
+          <div className="mx-3 my-2 p-3 bg-[#1f6feb]/15 border border-[#1f6feb]/60 text-[#c9d1d9] rounded-md text-xs space-y-2 shadow-lg shrink-0 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-white">
+                <Sparkles className="w-4 h-4 text-[#58a6ff]" />
+                <span>Auto-Fix Aplicado: {autoFixFeedback.ruleApplied}</span>
+              </div>
+              <button
+                onClick={() => setAutoFixFeedback(null)}
+                className="text-[#8b949e] hover:text-white px-1.5 py-0.5 text-xs bg-[#21262d] hover:bg-[#30363d] rounded border border-[#30363d]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 text-[11px] font-mono">
+              <span className="text-[#8b949e]">
+                Score Anterior: <strong className="text-[#ffa657]">{autoFixFeedback.previousScore}/100</strong>
+              </span>
+              <span className="text-white">➔</span>
+              <span className="text-[#7ee787] font-bold">
+                Novo Score: {autoFixFeedback.newScore}/100 (+{autoFixFeedback.newScore - autoFixFeedback.previousScore} pts)
+              </span>
+            </div>
+
+            {autoFixFeedback.modifiedLines.length > 0 && (
+              <div className="p-2 bg-[#0d1117] rounded border border-[#30363d] text-[10px] font-mono text-[#8b949e] space-y-1 max-h-24 overflow-y-auto">
+                <span className="text-[#58a6ff] block font-bold">Modificações Realizadas no AST:</span>
+                {autoFixFeedback.modifiedLines.map((mod, idx) => (
+                  <div key={idx} className="text-[#c9d1d9]">
+                    • Linhas {mod.startLine}-{mod.endLine}: {mod.description}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Audit Success Toast Banner */}
         {auditSuccessMessage && (
           <div className="mx-3 my-2 p-3 bg-[#238636]/15 border border-[#238636]/60 text-[#7ee787] rounded-md text-xs flex items-center justify-between gap-2 shadow-md shrink-0 animate-fadeIn">
@@ -274,6 +361,29 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         {/* TAB 1: AUDIT BREAKDOWN */}
         {activeRightTab === 'audit' && (
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+            {/* Auto-Fix All Global CTA if vulnerabilities exist */}
+            {hasFixableVulnerabilities && (
+              <div className="p-3 bg-gradient-to-r from-[#1f6feb26] to-[#23863626] border border-[#1f6feb]/40 rounded-lg flex items-center justify-between gap-2 shadow-xs">
+                <div>
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-[#58a6ff]" />
+                    Correção Automática Disponível
+                  </span>
+                  <p className="text-[11px] text-[#8b949e] mt-0.5">
+                    Aplique todas as restrições Anchor recomendadas em 1 clique.
+                  </p>
+                </div>
+                <button
+                  onClick={handleBatchAutoFix}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#238636] hover:bg-[#2ea043] border border-[#30363d] rounded transition-all shrink-0 shadow-sm"
+                  title="Aplicar todas as correções de segurança recomendadas"
+                >
+                  <Wrench className="w-3.5 h-3.5 text-white" />
+                  <span>Corrigir Todas</span>
+                </button>
+              </div>
+            )}
+
             {auditIssues.map((issue) => (
               <div
                 key={issue.id}
@@ -296,17 +406,16 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                   </div>
 
                   {issue.fixAction && (
-                    <button
-                      onClick={() => {
-                        if (issue.fixAction?.patchCode) {
-                          alert(`Código de correção sugerido:\n\n${issue.fixAction.patchCode}`);
-                        }
-                      }}
-                      className="text-[11px] font-semibold text-[#7ee787] hover:text-white bg-[#238636]/30 hover:bg-[#238636] px-2.5 py-1 rounded border border-[#238636]/60 transition-colors self-start flex items-center gap-1"
-                    >
-                      <Code className="w-3 h-3" />
-                      <span>{issue.fixAction.label}</span>
-                    </button>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        onClick={() => handleSingleAutoFix(issue.id)}
+                        className="text-[11px] font-semibold text-white bg-[#238636] hover:bg-[#2ea043] px-2.5 py-1 rounded border border-[#30363d] transition-colors self-start flex items-center gap-1.5 shadow-xs"
+                        title="Aplicar correção automaticamente no código"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-[#7ee787]" />
+                        <span>Auto-Fix: {issue.fixAction.label}</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
