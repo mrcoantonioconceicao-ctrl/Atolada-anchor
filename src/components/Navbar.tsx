@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheck, Code2, Cpu, Terminal, FileCode, BookOpen, Sparkles, CheckCircle2, Github } from 'lucide-react';
+import { ShieldCheck, Code2, Cpu, Terminal, FileCode, BookOpen, Sparkles, CheckCircle2, Github, Cloud, LogIn, Compass } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   activeTab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide' | 'rust_engine';
@@ -8,6 +9,8 @@ interface NavbarProps {
   onOpenAi: () => void;
   onRunAudit: () => void;
   onOpenGithub?: () => void;
+  onOpenCloud?: () => void;
+  onOpenTour?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,7 +20,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAi,
   onRunAudit,
   onOpenGithub,
+  onOpenCloud,
+  onOpenTour,
 }) => {
+  const { user, login } = useAuth();
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-[#7ee787] bg-[#238636]/20 border-[#238636]/60';
     if (score >= 50) return 'text-[#d2a8ff] bg-[#1f6feb]/20 border-[#1f6feb]/60';
@@ -82,6 +89,33 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Primary Actions & Audit Score */}
         <div className="flex items-center gap-2 shrink-0">
+          {onOpenTour && (
+            <button
+              onClick={onOpenTour}
+              className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-[#14F195] bg-[#14F195]/10 hover:bg-[#14F195]/20 border border-[#14F195]/30 rounded transition-colors shrink-0 whitespace-nowrap shadow-xs"
+              title="Tour Completo e Tutorial do Sistema"
+            >
+              <Compass className="w-3.5 h-3.5 text-[#14F195]" />
+              <span className="hidden md:inline font-semibold">Tour & Guia</span>
+              <span className="md:hidden font-semibold">Tour</span>
+            </button>
+          )}
+
+          {onOpenCloud && (
+            <button
+              onClick={onOpenCloud}
+              className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] rounded transition-colors border border-[#30363d] shrink-0 whitespace-nowrap"
+              title="Firebase Cloud Sync e Contratos Salvos"
+            >
+              <Cloud className="w-3.5 h-3.5 text-[#58a6ff]" />
+              <span className="hidden md:inline">Cloud Projects</span>
+              <span className="md:hidden">Cloud</span>
+              {user && (
+                <span className="w-2 h-2 rounded-full bg-[#7ee787] ml-0.5" />
+              )}
+            </button>
+          )}
+
           {onOpenGithub && (
             <button
               onClick={onOpenGithub}

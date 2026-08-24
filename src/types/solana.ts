@@ -97,3 +97,37 @@ export interface CodeTemplate {
   description: string;
   code: string;
 }
+
+export interface DeploymentDryRunStep {
+  name: string;
+  status: 'pending' | 'in_progress' | 'success' | 'warning' | 'error';
+  details: string;
+  txSignature?: string;
+  computeUnits?: number;
+  lamportsDelta?: number;
+}
+
+export interface DeploymentSimulationResult {
+  success: boolean;
+  programId: string;
+  programName: string;
+  cluster: 'devnet' | 'testnet' | 'mainnet-beta' | 'localnet';
+  deployerPubkey: string;
+  upgradeAuthorityPubkey: string;
+  estimatedBinarySizeBytes: number;
+  bufferAccountPubkey: string;
+  programDataPubkey: string;
+  rentExemptionLamports: number;
+  rentExemptionSol: number;
+  estimatedTxFeesLamports: number;
+  estimatedTxFeesSol: number;
+  totalCostLamports: number;
+  totalCostSol: number;
+  auditScore: number;
+  isAuditPassed: boolean;
+  steps: DeploymentDryRunStep[];
+  logs: string[];
+  generatedIdl: any;
+  deployedAt: string;
+  errorMessage?: string;
+}

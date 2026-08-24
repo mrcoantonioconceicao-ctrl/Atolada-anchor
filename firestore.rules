@@ -1,0 +1,118 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all unknown paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helper primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Profile Validation Helper
+    function isValidUserProfile(data, uid) {
+      return data.uid == uid
+        && data.uid is string && data.uid.size() <= 128
+        && data.email is string && data.email.size() <= 255
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024));
+    }
+
+    // Saved Contract Validation Helper
+    function isValidSavedContract(data, uid) {
+      return data.ownerId == uid
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 120
+        && (!('description' in data) || (data.description is string && data.description.size() <= 500))
+        && data.sourceCode is string && data.sourceCode.size() > 0 && data.sourceCode.size() <= 50000
+        && (!('templateType' in data) || (data.templateType is string && data.templateType.size() <= 50))
+        && (!('auditScore' in data) || (data.auditScore is number && data.auditScore >= 0 && data.auditScore <= 100));
+    }
+
+    // Audit Report Validation Helper
+    function isValidAuditReport(data, uid) {
+      return data.ownerId == uid
+        && data.id is string && data.id.size() <= 128
+        && data.contractTitle is string && data.contractTitle.size() <= 120
+        && data.score is number && data.score >= 0 && data.score <= 100
+        && data.passedChecks is number && data.passedChecks >= 0
+        && data.totalRules is number && data.totalRules >= 0
+        && data.isProductionReady is bool;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+
+      allow delete: if isOwner(userId);
+
+      // User's Saved Contracts Subcollection
+      match /contracts/{contractId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && isValidId(contractId)
+          && isValidSavedContract(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidId(contractId)
+          && isValidSavedContract(incoming(), userId)
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time;
+
+        allow delete: if isOwner(userId) && isValidId(contractId);
+      }
+
+      // User's Audit Reports Subcollection
+      match /audit_reports/{reportId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && isValidId(reportId)
+          && isValidAuditReport(incoming(), userId)
+          && incoming().createdAt == request.time;
+
+        allow update: if false; // Audit reports are immutable historical logs
+        allow delete: if isOwner(userId) && isValidId(reportId);
+      }
+    }
+  }
+}

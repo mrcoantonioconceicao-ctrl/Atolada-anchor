@@ -1,0 +1,158 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information and settings",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique Firebase Auth UID of the user",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's verified email address",
+          "maxLength": 255
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar photo URL of the user",
+          "maxLength": 1024
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the profile was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the profile was last updated"
+        }
+      },
+      "required": ["uid", "email", "createdAt", "updatedAt"]
+    },
+    "SavedContract": {
+      "title": "SavedContract",
+      "description": "A saved Solana Anchor smart contract project belonging to a user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique contract document identifier",
+          "maxLength": 128
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The user UID who owns this contract",
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "description": "The name or title of the smart contract",
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of the contract logic",
+          "maxLength": 500
+        },
+        "sourceCode": {
+          "type": "string",
+          "description": "Complete Anchor Rust source code",
+          "maxLength": 50000
+        },
+        "templateType": {
+          "type": "string",
+          "description": "Template or archetype category",
+          "maxLength": 50
+        },
+        "auditScore": {
+          "type": "number",
+          "description": "Last recorded security audit score from 0 to 100"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "title", "sourceCode", "createdAt", "updatedAt"]
+    },
+    "AuditReportRecord": {
+      "title": "AuditReportRecord",
+      "description": "Historical audit report execution record",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique audit report identifier",
+          "maxLength": 128
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the user who performed the audit",
+          "maxLength": 128
+        },
+        "contractTitle": {
+          "type": "string",
+          "description": "Title of the audited contract",
+          "maxLength": 120
+        },
+        "score": {
+          "type": "number",
+          "description": "Security audit score (0-100)"
+        },
+        "passedChecks": {
+          "type": "number",
+          "description": "Number of passed rules"
+        },
+        "totalRules": {
+          "type": "number",
+          "description": "Total rules evaluated"
+        },
+        "isProductionReady": {
+          "type": "boolean",
+          "description": "Whether the contract passes production requirements"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the audit"
+        }
+      },
+      "required": ["id", "ownerId", "contractTitle", "score", "passedChecks", "totalRules", "isProductionReady", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "User profile document storing authenticated account info"
+    },
+    "/users/{userId}/contracts/{contractId}": {
+      "schema": {
+        "$ref": "#/entities/SavedContract"
+      },
+      "description": "Private subcollection of saved smart contracts owned by the user"
+    },
+    "/users/{userId}/audit_reports/{reportId}": {
+      "schema": {
+        "$ref": "#/entities/AuditReportRecord"
+      },
+      "description": "Private subcollection of audit execution records for the user"
+    }
+  }
+}

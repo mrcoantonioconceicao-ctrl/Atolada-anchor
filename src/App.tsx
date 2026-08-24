@@ -10,12 +10,20 @@ import { SecurityGuide } from './components/SecurityGuide';
 import { RustEngineViewer } from './components/RustEngineViewer';
 import { AiAssistantModal } from './components/AiAssistantModal';
 import { GithubPushModal } from './components/GithubPushModal';
+import { CloudProjectsModal } from './components/CloudProjectsModal';
+import { SystemTourModal } from './components/SystemTourModal';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { recordAuditToCloud } from './firebase';
 
-export default function App() {
+function MainApp() {
   const [activeTab, setActiveTab] = useState<'editor' | 'pda' | 'simulator' | 'sdk' | 'guide' | 'rust_engine'>('editor');
   const [code, setCode] = useState<string>(USER_INITIAL_COUNTER_CODE);
   const [isAiOpen, setIsAiOpen] = useState<boolean>(false);
   const [isGithubOpen, setIsGithubOpen] = useState<boolean>(false);
+  const [isCloudOpen, setIsCloudOpen] = useState<boolean>(false);
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
+
+  const { user } = useAuth();
 
   // Run security audit on current code state
   const auditResult = useMemo(() => {
@@ -24,10 +32,26 @@ export default function App() {
 
   const handleRunAudit = () => {
     setActiveTab('editor');
+    // Save audit record to Cloud Firestore if logged in
+    if (user) {
+      recordAuditToCloud(user.uid, {
+        id: `audit_${Date.now()}`,
+        contractTitle: 'Solana Counter Sandbox',
+        score: auditResult.score,
+        passedChecks: auditResult.passedChecks,
+        totalRules: auditResult.totalRules,
+        isProductionReady: auditResult.isProductionReady,
+      }).catch((err) => console.error('Cloud audit record error:', err));
+    }
   };
 
   const handleResetCode = () => {
     setCode(USER_INITIAL_COUNTER_CODE);
+  };
+
+  const handleLoadContractFromCloud = (loadedCode: string) => {
+    setCode(loadedCode);
+    setActiveTab('editor');
   };
 
   return (
@@ -40,6 +64,8 @@ export default function App() {
         onOpenAi={() => setIsAiOpen(true)}
         onRunAudit={handleRunAudit}
         onOpenGithub={() => setIsGithubOpen(true)}
+        onOpenCloud={() => setIsCloudOpen(true)}
+        onOpenTour={() => setIsTourOpen(true)}
       />
 
       {/* Main Content View Switcher */}
@@ -67,6 +93,16 @@ export default function App() {
         {activeTab === 'guide' && <SecurityGuide />}
       </main>
 
+      {/* Interactive System Tour and Tutorial Modal */}
+      <SystemTourModal
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onNavigateToTab={(tab) => setActiveTab(tab)}
+        onOpenGithub={() => setIsGithubOpen(true)}
+        onOpenCloud={() => setIsCloudOpen(true)}
+        onOpenAi={() => setIsAiOpen(true)}
+      />
+
       {/* AI Senior Engineer Assistant Modal */}
       <AiAssistantModal
         isOpen={isAiOpen}
@@ -82,6 +118,23 @@ export default function App() {
         code={code}
         auditScore={auditResult.score}
       />
+
+      {/* Firebase Cloud Projects & Sync Modal */}
+      <CloudProjectsModal
+        isOpen={isCloudOpen}
+        onClose={() => setIsCloudOpen(false)}
+        currentCode={code}
+        auditScore={auditResult.score}
+        onLoadContract={handleLoadContractFromCloud}
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }

@@ -5,6 +5,7 @@
 ![React](https://img.shields.io/badge/React-18.x-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-3.x-06B6D4?style=for-the-badge&logo=tailwindcss)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%26%20Auth-FFCA28?style=for-the-badge&logo=firebase)
 ![GitHub REST API](https://img.shields.io/badge/GitHub%20API-Integration-black?style=for-the-badge&logo=github)
 
 O **Solana Architect** é um ambiente de desenvolvimento (IDE) de ponta a ponta, motor de auditoria de segurança estática AST nativo em **Rust** (`crates/solana-architect-core`), simulador de execução On-Chain localnet (SVM), gerador de testes unitários (`solana-program-test`) e exportador de repositórios Anchor completos para o **GitHub**.
