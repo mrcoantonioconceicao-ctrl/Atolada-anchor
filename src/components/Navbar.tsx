@@ -1,14 +1,30 @@
 import React from 'react';
-import { ShieldCheck, Code2, Cpu, Terminal, FileCode, BookOpen, Sparkles, CheckCircle2, Github, Cloud, LogIn, Compass } from 'lucide-react';
+import {
+  ShieldCheck,
+  Code2,
+  Cpu,
+  Terminal,
+  FileCode,
+  BookOpen,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  Github,
+  Cloud,
+  Compass,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AuditIssue } from '../types/solana';
 
 interface NavbarProps {
   activeTab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide' | 'rust_engine';
   setActiveTab: (tab: 'editor' | 'pda' | 'simulator' | 'sdk' | 'guide' | 'rust_engine') => void;
   auditScore: number;
+  auditIssues?: AuditIssue[];
   onOpenAi: () => void;
   onRunAudit: () => void;
-  onOpenGithub?: () => void;
+  onOpenGithub?: (tab?: 'import' | 'export') => void;
   onOpenCloud?: () => void;
   onOpenTour?: () => void;
 }
@@ -17,18 +33,32 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   auditScore,
+  auditIssues = [],
   onOpenAi,
   onRunAudit,
   onOpenGithub,
   onOpenCloud,
   onOpenTour,
 }) => {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-[#7ee787] bg-[#238636]/20 border-[#238636]/60';
-    if (score >= 50) return 'text-[#d2a8ff] bg-[#1f6feb]/20 border-[#1f6feb]/60';
-    return 'text-[#ff7b72] bg-[#f85149]/20 border-[#f85149]/60';
+  const criticalIssues = auditIssues.filter((i) => i.severity === 'critical');
+  const highIssues = auditIssues.filter((i) => i.severity === 'high');
+  const criticalCount = criticalIssues.length;
+  const highCount = highIssues.length;
+  const totalHighPriority = criticalCount + highCount;
+
+  const getScoreBadgeStyles = () => {
+    if (criticalCount > 0) {
+      return 'text-[#ff7b72] bg-[#f85149]/10 border-[#f85149]/50 hover:bg-[#f85149]/20 hover:border-[#f85149]/70';
+    }
+    if (highCount > 0) {
+      return 'text-[#f0883e] bg-[#d29922]/10 border-[#d29922]/50 hover:bg-[#d29922]/20 hover:border-[#d29922]/70';
+    }
+    if (auditScore >= 85) {
+      return 'text-[#7ee787] bg-[#238636]/10 border-[#238636]/50 hover:bg-[#238636]/20 hover:border-[#238636]/70';
+    }
+    return 'text-[#58a6ff] bg-[#1f6feb]/10 border-[#1f6feb]/50 hover:bg-[#1f6feb]/20 hover:border-[#1f6feb]/70';
   };
 
   const navItems = [
@@ -87,7 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           })}
         </nav>
 
-        {/* Zone 3: Primary Actions & Audit Score */}
+        {/* Zone 3: Primary Actions & Audit Score with High-Priority Vulnerability Breakdown */}
         <div className="flex items-center gap-2 shrink-0">
           {onOpenTour && (
             <button
@@ -118,28 +148,58 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {onOpenGithub && (
             <button
-              onClick={onOpenGithub}
-              className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] rounded transition-colors border border-[#30363d] shrink-0 whitespace-nowrap"
-              title="Salvar/Exportar Smart Contract para o GitHub"
+              onClick={() => onOpenGithub('import')}
+              className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] rounded transition-colors border border-[#30363d] shrink-0 whitespace-nowrap shadow-xs"
+              title="Abrir Repositório Público do GitHub por URL ou Exportar"
             >
               <Github className="w-3.5 h-3.5 text-white" />
-              <span className="hidden md:inline">Push GitHub</span>
+              <span className="hidden md:inline">GitHub (URL)</span>
               <span className="md:hidden">GitHub</span>
             </button>
           )}
 
+          {/* Interactive Audit Summary Badge with High-Priority Indicators */}
           <div
-            className={`flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1 rounded border font-mono text-xs font-semibold cursor-pointer transition-all ${getScoreColor(
-              auditScore
-            )}`}
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-md border font-mono text-xs cursor-pointer transition-all shadow-xs ${getScoreBadgeStyles()}`}
             onClick={() => {
               setActiveTab('editor');
               onRunAudit();
             }}
-            title="Clique para ver detalhes da auditoria de segurança"
+            title={`Auditoria: ${auditScore}/100 • ${criticalCount} Críticas, ${highCount} Altas. Clique para inspecionar no Editor.`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="whitespace-nowrap">Nota: {auditScore}/100</span>
+            {criticalCount > 0 ? (
+              <AlertCircle className="w-3.5 h-3.5 text-[#ff7b72] shrink-0 animate-pulse" />
+            ) : highCount > 0 ? (
+              <AlertTriangle className="w-3.5 h-3.5 text-[#f0883e] shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#7ee787] shrink-0" />
+            )}
+
+            <span className="font-bold whitespace-nowrap">
+              {auditScore}/100
+            </span>
+
+            {/* High-Priority Vulnerability Summary Badges */}
+            {totalHighPriority > 0 ? (
+              <div className="flex items-center gap-1 shrink-0">
+                {criticalCount > 0 && (
+                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#f85149]/25 text-[#ff7b72] border border-[#f85149]/40 leading-none whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#f85149] shrink-0" />
+                    {criticalCount} <span className="hidden sm:inline">{criticalCount === 1 ? 'Crit' : 'Crits'}</span>
+                  </span>
+                )}
+                {highCount > 0 && (
+                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#d29922]/25 text-[#f0883e] border border-[#d29922]/40 leading-none whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#f0883e] shrink-0" />
+                    {highCount} <span className="hidden sm:inline">{highCount === 1 ? 'Alta' : 'Altas'}</span>
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#238636]/25 text-[#7ee787] border border-[#238636]/40 leading-none whitespace-nowrap">
+                0 Falhas
+              </span>
+            )}
           </div>
 
           <button

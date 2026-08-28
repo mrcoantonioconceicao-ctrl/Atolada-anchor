@@ -31,6 +31,372 @@ export interface PushResult {
   error?: string;
 }
 
+export interface ParsedGithubUrl {
+  owner: string;
+  repo: string;
+  branch?: string;
+  path?: string;
+  isDirectFile: boolean;
+  rawUrl?: string;
+  fullRepoUrl: string;
+}
+
+export interface PublicRepoFile {
+  path: string;
+  name: string;
+  size?: number;
+  isProgramLib: boolean;
+  isRust: boolean;
+}
+
+export interface PublicRepoLoadResult {
+  success: boolean;
+  owner: string;
+  repo: string;
+  branch: string;
+  description?: string;
+  stars?: number;
+  files: PublicRepoFile[];
+  selectedFilePath: string;
+  code: string;
+  shareableUrl: string;
+  error?: string;
+}
+
+export const POPULAR_PUBLIC_SOLANA_REPOS = [
+  {
+    name: 'Anchor Official - Basic Tutorial',
+    repoUrl: 'https://github.com/coral-xyz/anchor/blob/master/examples/tutorial/basic-0/programs/basic-0/src/lib.rs',
+    description: 'Exemplo oficial introdutório do framework Anchor com inicialização de estado.',
+    ownerRepo: 'coral-xyz/anchor',
+    tags: ['Anchor', 'Oficial', 'Tutorial'],
+  },
+  {
+    name: 'Solana Devs - Counter Program',
+    repoUrl: 'https://github.com/solana-developers/program-examples/blob/main/basics/counter/anchor/programs/counter/src/lib.rs',
+    description: 'Contrato Anchor de contador com instrução de incremento e validação de signer.',
+    ownerRepo: 'solana-developers/program-examples',
+    tags: ['Counter', 'Anchor v0.30', 'Basics'],
+  },
+  {
+    name: 'Solana Devs - Create Account',
+    repoUrl: 'https://github.com/solana-developers/program-examples/blob/main/basics/create-account/anchor/programs/create-account/src/lib.rs',
+    description: 'Programa para criação de contas personalizadas e inicialização de rent exemption.',
+    ownerRepo: 'solana-developers/program-examples',
+    tags: ['Account', 'Rent', 'System Program'],
+  },
+  {
+    name: 'Solana Devs - PDA Sharing',
+    repoUrl: 'https://github.com/solana-developers/program-examples/blob/main/basics/pda-sharing/anchor/programs/pda-sharing/src/lib.rs',
+    description: 'Padrão seguro de derivação de PDAs com sementes canônicas e bumps.',
+    ownerRepo: 'solana-developers/program-examples',
+    tags: ['PDA', 'Seeds', 'Security'],
+  },
+  {
+    name: 'Solana Devs - Custom Errors',
+    repoUrl: 'https://github.com/solana-developers/program-examples/blob/main/basics/custom-errors/anchor/programs/custom-errors/src/lib.rs',
+    description: 'Tratamento rigoroso de erros tipados com macros #[error_code] e require!.',
+    ownerRepo: 'solana-developers/program-examples',
+    tags: ['Error Handling', 'Audit Ready'],
+  },
+];
+
+/**
+ * Parses any GitHub URL (full repo, blob file, tree, raw URL, or owner/repo identifier)
+ */
+export function parseGithubUrl(inputUrl: string): ParsedGithubUrl | null {
+  if (!inputUrl || typeof inputUrl !== 'string') return null;
+
+  let cleaned = inputUrl.trim();
+  // Remove git+ or ssh prefixes if present
+  cleaned = cleaned.replace(/^git\+https:\/\//, 'https://');
+  cleaned = cleaned.replace(/^git@github\.com:/, 'https://github.com/');
+
+  // 1. Check raw.githubusercontent.com format: https://raw.githubusercontent.com/owner/repo/branch/path/to/file
+  const rawMatch = cleaned.match(/^https?:\/\/raw\.githubusercontent\.com\/([^\/]+)\/([^\/]+)\/([^\/]+)\/(.+)$/i);
+  if (rawMatch) {
+    const [, owner, repo, branch, path] = rawMatch;
+    return {
+      owner,
+      repo: repo.replace(/\.git$/i, ''),
+      branch,
+      path,
+      isDirectFile: true,
+      rawUrl: cleaned,
+      fullRepoUrl: `https://github.com/${owner}/${repo.replace(/\.git$/i, '')}`,
+    };
+  }
+
+  // 2. Check standard github.com format: https://github.com/owner/repo(/blob|/tree/branch/path)?
+  const ghMatch = cleaned.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/\?#]+)(.*)$/i);
+  if (ghMatch) {
+    const owner = ghMatch[1];
+    let repo = ghMatch[2].replace(/\.git$/i, '');
+    const rest = ghMatch[3] || '';
+
+    // Check blob (file) URL: /blob/branch/path...
+    const blobMatch = rest.match(/^\/blob\/([^\/]+)\/(.+)$/);
+    if (blobMatch) {
+      const branch = blobMatch[1];
+      const path = blobMatch[2];
+      return {
+        owner,
+        repo,
+        branch,
+        path,
+        isDirectFile: true,
+        rawUrl: `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`,
+        fullRepoUrl: `https://github.com/${owner}/${repo}`,
+      };
+    }
+
+    // Check tree (folder) URL: /tree/branch/path...
+    const treeMatch = rest.match(/^\/tree\/([^\/]+)(?:\/(.+))?$/);
+    if (treeMatch) {
+      const branch = treeMatch[1];
+      const path = treeMatch[2] || '';
+      return {
+        owner,
+        repo,
+        branch,
+        path,
+        isDirectFile: false,
+        fullRepoUrl: `https://github.com/${owner}/${repo}`,
+      };
+    }
+
+    return {
+      owner,
+      repo,
+      isDirectFile: false,
+      fullRepoUrl: `https://github.com/${owner}/${repo}`,
+    };
+  }
+
+  // 3. Check shorthand owner/repo or owner/repo@branch or owner/repo:path
+  const shortMatch = cleaned.match(/^([a-zA-Z0-9_\-\.]+)\/([a-zA-Z0-9_\-\.]+)(?:@([a-zA-Z0-9_\-\.]+))?(?::(.+))?$/);
+  if (shortMatch && !cleaned.includes('://')) {
+    const owner = shortMatch[1];
+    const repo = shortMatch[2].replace(/\.git$/i, '');
+    const branch = shortMatch[3];
+    const path = shortMatch[4];
+    return {
+      owner,
+      repo,
+      branch,
+      path,
+      isDirectFile: Boolean(path && path.endsWith('.rs')),
+      fullRepoUrl: `https://github.com/${owner}/${repo}`,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Fetches raw file content from GitHub without requiring authentication
+ */
+export async function fetchPublicGithubFileContent(
+  owner: string,
+  repo: string,
+  filePath: string,
+  branch: string = 'main'
+): Promise<string> {
+  const primaryUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
+  
+  try {
+    const response = await fetch(primaryUrl);
+    if (response.ok) {
+      return await response.text();
+    }
+  } catch {
+    // continue to fallback
+  }
+
+  // If primary branch failed and branch was 'main', try 'master' as fallback
+  if (branch === 'main') {
+    try {
+      const masterUrl = `https://raw.githubusercontent.com/${owner}/${repo}/master/${filePath}`;
+      const resMaster = await fetch(masterUrl);
+      if (resMaster.ok) {
+        return await resMaster.text();
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  // As a last fallback, try GitHub API contents endpoint without auth
+  const apiContentsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`;
+  const apiRes = await fetch(apiContentsUrl, {
+    headers: { Accept: 'application/vnd.github.v3+json' },
+  });
+
+  if (apiRes.ok) {
+    const apiData = await apiRes.json();
+    if (apiData.content && apiData.encoding === 'base64') {
+      return decodeURIComponent(escape(atob(apiData.content.replace(/\s/g, ''))));
+    }
+    if (apiData.download_url) {
+      const rawRes = await fetch(apiData.download_url);
+      if (rawRes.ok) return await rawRes.text();
+    }
+  }
+
+  throw new Error(`Não foi possível carregar o arquivo '${filePath}' do repositório ${owner}/${repo}. Verifique se o arquivo existe e se o repositório é público.`);
+}
+
+/**
+ * Fetches a public GitHub repository or file directly using only the URL or identifier
+ * NO authentication token required!
+ */
+export async function fetchPublicGithubRepository(urlOrIdentifier: string): Promise<PublicRepoLoadResult> {
+  const parsed = parseGithubUrl(urlOrIdentifier);
+  if (!parsed) {
+    throw new Error('URL ou identificador do GitHub inválido. Exemplos válidos: "https://github.com/coral-xyz/anchor" ou "solana-developers/program-examples".');
+  }
+
+  const { owner, repo } = parsed;
+  let targetBranch = parsed.branch || 'main';
+
+  // 1. Direct File Request
+  if (parsed.isDirectFile && parsed.path) {
+    const code = await fetchPublicGithubFileContent(owner, repo, parsed.path, targetBranch);
+    const fileName = parsed.path.split('/').pop() || parsed.path;
+    return {
+      success: true,
+      owner,
+      repo,
+      branch: targetBranch,
+      files: [
+        {
+          path: parsed.path,
+          name: fileName,
+          isProgramLib: parsed.path.endsWith('lib.rs'),
+          isRust: true,
+        },
+      ],
+      selectedFilePath: parsed.path,
+      code,
+      shareableUrl: `${window.location.origin}/?repo=https://github.com/${owner}/${repo}/blob/${targetBranch}/${parsed.path}`,
+    };
+  }
+
+  // 2. Repository Request: Fetch Repository metadata and Git Tree
+  let defaultBranch = targetBranch;
+  let repoDescription = '';
+  let repoStars = 0;
+
+  try {
+    const repoMetaRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+    if (repoMetaRes.ok) {
+      const repoData = await repoMetaRes.json();
+      defaultBranch = parsed.branch || repoData.default_branch || 'main';
+      repoDescription = repoData.description || '';
+      repoStars = repoData.stargazers_count || 0;
+    }
+  } catch (e) {
+    console.warn('Could not fetch repo metadata from GitHub API (might be rate limited), proceeding with branch:', defaultBranch);
+  }
+
+  targetBranch = defaultBranch;
+
+  // 3. Fetch Git Tree recursively to list all files
+  let treeFiles: { path: string; size?: number }[] = [];
+  try {
+    const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${targetBranch}?recursive=1`);
+    if (treeRes.ok) {
+      const treeData = await treeRes.json();
+      if (Array.isArray(treeData.tree)) {
+        treeFiles = treeData.tree
+          .filter((item: any) => item.type === 'blob')
+          .map((item: any) => ({ path: item.path, size: item.size }));
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch git tree:', e);
+  }
+
+  // Filter Rust (.rs) files
+  const rustFiles: PublicRepoFile[] = treeFiles
+    .filter((f) => f.path.endsWith('.rs'))
+    .map((f) => ({
+      path: f.path,
+      name: f.path.split('/').pop() || f.path,
+      size: f.size,
+      isRust: true,
+      isProgramLib: f.path.endsWith('src/lib.rs') || f.path.endsWith('lib.rs') || f.path.includes('/programs/'),
+    }));
+
+  // Sort files: prioritize programs/**/src/lib.rs > src/lib.rs > lib.rs
+  rustFiles.sort((a, b) => {
+    if (a.isProgramLib && !b.isProgramLib) return -1;
+    if (!a.isProgramLib && b.isProgramLib) return 1;
+    if (a.path.includes('programs/') && !b.path.includes('programs/')) return -1;
+    if (!a.path.includes('programs/') && b.path.includes('programs/')) return 1;
+    return a.path.localeCompare(b.path);
+  });
+
+  // If no tree returned (e.g. rate limit), try standard Solana paths
+  let selectedFilePath = '';
+  let selectedCode = '';
+
+  if (rustFiles.length > 0) {
+    // Select the best candidate (e.g., first program lib.rs)
+    selectedFilePath = rustFiles[0].path;
+    selectedCode = await fetchPublicGithubFileContent(owner, repo, selectedFilePath, targetBranch);
+  } else {
+    // Fallback attempts
+    const commonPaths = [
+      `programs/${repo}/src/lib.rs`,
+      `programs/counter/src/lib.rs`,
+      `src/lib.rs`,
+      `lib.rs`,
+      `programs/basic-0/src/lib.rs`,
+    ];
+
+    let loaded = false;
+    for (const testPath of commonPaths) {
+      try {
+        const text = await fetchPublicGithubFileContent(owner, repo, testPath, targetBranch);
+        if (text && text.trim().length > 0) {
+          selectedFilePath = testPath;
+          selectedCode = text;
+          rustFiles.push({
+            path: testPath,
+            name: testPath.split('/').pop() || testPath,
+            isRust: true,
+            isProgramLib: true,
+          });
+          loaded = true;
+          break;
+        }
+      } catch {
+        // try next path
+      }
+    }
+
+    if (!loaded) {
+      throw new Error(
+        `Nenhum arquivo de Smart Contract Rust (.rs) foi encontrado no repositório público ${owner}/${repo}. Certifique-se de que é um repositório Solana/Anchor válido.`
+      );
+    }
+  }
+
+  return {
+    success: true,
+    owner,
+    repo,
+    branch: targetBranch,
+    description: repoDescription,
+    stars: repoStars,
+    files: rustFiles,
+    selectedFilePath,
+    code: selectedCode,
+    shareableUrl: `${window.location.origin}/?repo=https://github.com/${owner}/${repo}`,
+  };
+}
+
 /**
  * Utility to encode unicode strings to Base64 safely in browser
  */

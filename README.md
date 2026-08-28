@@ -106,7 +106,12 @@ O ecossistema do Solana Architect é dividido em três camadas desacopladas e re
 - **Simulador de Deploy no Devnet**: Dry-run do pipeline `BPF Loader Upgradeable` com estimativa de ELF, taxas de rent e transações RPC simuladas.
 
 ### 9. Integração com GitHub & Nuvem Firestore
-- **Push to GitHub Nativo**:
+- **Abertura de Repositórios Públicos por URL (Sem Token / Sem Login)**:
+  - **Acesso Instantâneo por URL**: Abra qualquer repositório público ou arquivo de smart contract do GitHub digitando a URL (`https://github.com/owner/repo`, `.../programs/my_prog/src/lib.rs` ou `owner/repo`).
+  - **Deep Linking / URL Direta**: Suporte a parâmetros de consulta na URL (`?repo=https://github.com/coral-xyz/anchor` ou `?repo=owner/repo`) que carregam, auditam e abrem automaticamente o contrato no editor.
+  - **Exemplos Públicos Integrados**: 1-clique para abrir programas oficiais da Solana Foundation e Anchor Tutorial.
+  - **Detecção Inteligente de Smart Contracts**: Varredura recursiva da árvore Git priorizando `programs/**/src/lib.rs` e `src/lib.rs`.
+- **Push to GitHub Nativo (com Personal Access Token)**:
   - Exportação direta de repositórios **Públicos** e **Privados** via GitHub REST API v3.
   - Geração de workspace completo com `programs/`, `Anchor.toml`, `Cargo.toml`, `target/idl/`, `client/` e `README.md` com badge de pontuação.
 - **Firebase Firestore & Google Auth**:

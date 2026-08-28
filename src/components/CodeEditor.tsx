@@ -17,6 +17,7 @@ import {
   FileText,
   ChevronRight,
   Github,
+  Globe,
   Wrench,
   Sparkles,
   Zap,
@@ -31,7 +32,7 @@ interface CodeEditorProps {
   auditScore: number;
   onRunAudit: () => void;
   onResetCode: () => void;
-  onOpenGithub?: () => void;
+  onOpenGithub?: (tab?: 'import' | 'export') => void;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -184,15 +185,27 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             />
 
             {onOpenGithub && (
-              <button
-                onClick={onOpenGithub}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors"
-                title="Salvar/Exportar Smart Contract para o GitHub"
-              >
-                <Github className="w-3.5 h-3.5 text-white" />
-                <span className="hidden sm:inline">Push para GitHub</span>
-                <span className="sm:hidden">Push</span>
-              </button>
+              <>
+                <button
+                  onClick={() => onOpenGithub('import')}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#58a6ff] bg-[#1f6feb]/15 hover:bg-[#1f6feb]/25 border border-[#1f6feb]/40 rounded transition-colors shadow-xs"
+                  title="Abrir qualquer repositório público ou arquivo do GitHub apenas com a URL"
+                >
+                  <Globe className="w-3.5 h-3.5 text-[#58a6ff]" />
+                  <span className="hidden md:inline">Abrir GitHub (URL)</span>
+                  <span className="md:hidden">Abrir URL</span>
+                </button>
+
+                <button
+                  onClick={() => onOpenGithub('export')}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors"
+                  title="Salvar/Exportar Smart Contract para o GitHub"
+                >
+                  <Github className="w-3.5 h-3.5 text-white" />
+                  <span className="hidden lg:inline">Push para GitHub</span>
+                  <span className="lg:hidden">Push</span>
+                </button>
+              </>
             )}
 
             <button
