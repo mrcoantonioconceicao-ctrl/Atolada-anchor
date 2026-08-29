@@ -26,6 +26,8 @@ O **Solana Architect** é uma plataforma integrada de engenharia de software e a
   - [7. Visualizador & Derivador Criptográfico de PDAs](#7-visualizador--derivador-criptográfico-de-pdas)
   - [8. Gerador de IDL, SDKs & Devnet Dry-Run](#8-gerador-de-idl-sdks--devnet-dry-run)
   - [9. Integração com GitHub & Nuvem Firestore](#9-integração-com-github--nuvem-firestore)
+  - [10. Navegação em Barra Lateral (Left Sidebar Responsiva)](#10-navegação-em-barra-lateral-left-sidebar-responsiva)
+- [Apresentação do Projeto (Pitch)](#-apresentação-do-projeto-pitch)
 - [Arquitetura de Alta Concorrência (10.000 Clientes)](#-arquitetura-de-alta-concorrência-10000-clientes)
 - [Layout de Memória Borsh (49 Bytes)](#-layout-de-memória-borsh-49-bytes)
 - [Como Executar o Projeto](#-como-executar-o-projeto)
@@ -117,6 +119,21 @@ O ecossistema do Solana Architect é dividido em três camadas desacopladas e re
 - **Firebase Firestore & Google Auth**:
   - Autenticação sem atritos com controle de concorrência.
   - Armazenamento em nuvem de versões de contratos e histórico de auditorias.
+
+### 10. Navegação em Barra Lateral (Left Sidebar Responsiva)
+- **Barra Lateral Esquerda Dedicada (Desktop & Notebooks)**:
+  - Posicionamento vertical otimizado que elimina o transbordamento horizontal da tela.
+  - Card interativo de **Security Score (0 a 100)** com contadores de falhas críticas e altas.
+  - Acesso rápido em 1 clique ao Assistente de IA, Módulos do Sistema, GitHub URL, Cloud Sync e Tour do Sistema.
+- **Gaveta Deslizante (Slide-Over Drawer para Mobile/Tablet)**:
+  - Header enxuto com acionamento por botão hamburger e animação suave com backdrop de desfoque.
+
+---
+
+## 🎯 Apresentação do Projeto (Pitch)
+
+Para uma síntese executiva completa com análise de mercado, dor do cliente, proposta de valor e roadmap, consulte o documento oficial:
+👉 **[Ler o Documento Completo de Pitch (PITCH.md)](./PITCH.md)**
 
 ---
 
@@ -210,7 +227,7 @@ cargo run --bin solana-architect idl
 │   │       └── cli.rs                   # CLI executável solana-architect
 ├── src/                                 # Aplicação Frontend React + TypeScript
 │   ├── components/
-│   │   ├── Navbar.tsx                   # Barra superior com score e seletores de módulo
+│   │   ├── Navbar.tsx                   # Barra lateral esquerda (Desktop) e Gaveta responsiva (Mobile)
 │   │   ├── CodeEditor.tsx               # IDE Rust + Análise AST + Auto-Fix + Ações de Auditoria
 │   │   ├── ExportPdfButton.tsx          # Botão e acionador do relatório executivo em PDF
 │   │   ├── RustEngineViewer.tsx         # Explorador do Crate Rust & Terminal CLI Simulator
@@ -220,7 +237,7 @@ cargo run --bin solana-architect idl
 │   │   ├── SdkAndIdlViewer.tsx          # Gerador de IDL JSON, SDKs e Devnet Dry-Run
 │   │   ├── SecurityGuide.tsx            # Guia de segurança e calculadora de Rent
 │   │   ├── SystemTourModal.tsx          # Tour interativo guiado (9 etapas)
-│   │   ├── GithubPushModal.tsx          # Modal de exportação para GitHub
+│   │   ├── GithubPushModal.tsx          # Modal de abertura de repositórios por URL & exportação GitHub
 │   │   ├── CloudProjectsModal.tsx       # Gerenciador de projetos Firebase Firestore
 │   │   └── AiAssistantModal.tsx         # Assistente de IA para refatoração e auditoria
 │   ├── context/
@@ -241,6 +258,7 @@ cargo run --bin solana-architect idl
 ├── vite.config.ts                       # Configuração do Vite com Vendor Chunking
 ├── package.json                         # Dependências e scripts do projeto
 ├── Cargo.toml                           # Workspace Cargo da raiz
+├── PITCH.md                             # Documento Executivo de Apresentação & Pitch Deck
 └── README.md                            # Documentação técnica detalhada
 ```
 

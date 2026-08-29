@@ -116,8 +116,8 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex flex-col font-sans selection:bg-[#1f6feb] selection:text-white">
-      {/* Top Bar Navigation Contract */}
+    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex flex-col lg:flex-row font-sans selection:bg-[#1f6feb] selection:text-white antialiased">
+      {/* Left Navigation & Tools Sidebar */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -130,61 +130,64 @@ function MainApp() {
         onOpenTour={() => setIsTourOpen(true)}
       />
 
-      {/* URL Import Notification Toast / Banner */}
-      {urlImportMessage && (
-        <div
-          className={`mx-4 mt-2 p-2.5 rounded-md border text-xs font-mono flex items-center justify-between shadow-lg animate-fadeIn shrink-0 ${
-            urlImportMessage.type === 'success'
-              ? 'bg-[#238636]/20 border-[#238636] text-[#7ee787]'
-              : urlImportMessage.type === 'error'
-              ? 'bg-[#f85149]/20 border-[#f85149] text-[#ff7b72]'
-              : 'bg-[#1f6feb]/20 border-[#1f6feb] text-[#58a6ff]'
-          }`}
-        >
-          <div className="flex items-center gap-2 truncate">
-            {urlImportMessage.type === 'loading' ? (
-              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-            ) : urlImportMessage.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-[#7ee787] shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-[#ff7b72] shrink-0" />
-            )}
-            <span className="truncate">{urlImportMessage.text}</span>
-          </div>
-
-          <button
-            onClick={() => setUrlImportMessage(null)}
-            className="p-1 hover:bg-black/30 rounded text-[#8b949e] hover:text-white transition-colors shrink-0 ml-2"
+      {/* Main Workspace Area (Right side) */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+        {/* URL Import Notification Toast / Banner */}
+        {urlImportMessage && (
+          <div
+            className={`mx-4 mt-3 p-2.5 rounded-md border text-xs font-mono flex items-center justify-between shadow-lg animate-fadeIn shrink-0 z-20 ${
+              urlImportMessage.type === 'success'
+                ? 'bg-[#238636]/20 border-[#238636] text-[#7ee787]'
+                : urlImportMessage.type === 'error'
+                ? 'bg-[#f85149]/20 border-[#f85149] text-[#ff7b72]'
+                : 'bg-[#1f6feb]/20 border-[#1f6feb] text-[#58a6ff]'
+            }`}
           >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
+            <div className="flex items-center gap-2 truncate">
+              {urlImportMessage.type === 'loading' ? (
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+              ) : urlImportMessage.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-[#7ee787] shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-[#ff7b72] shrink-0" />
+              )}
+              <span className="truncate">{urlImportMessage.text}</span>
+            </div>
 
-      {/* Main Content View Switcher */}
-      <main className="flex-1 relative">
-        {activeTab === 'editor' && (
-          <CodeEditor
-            code={code}
-            setCode={setCode}
-            auditIssues={auditResult.issues}
-            auditScore={auditResult.score}
-            onRunAudit={handleRunAudit}
-            onResetCode={handleResetCode}
-            onOpenGithub={(tab?: 'import' | 'export') => handleOpenGithubModal(tab || 'import')}
-          />
+            <button
+              onClick={() => setUrlImportMessage(null)}
+              className="p-1 hover:bg-black/30 rounded text-[#8b949e] hover:text-white transition-colors shrink-0 ml-2"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         )}
 
-        {activeTab === 'pda' && <PdaVisualizer />}
+        {/* Main Content View Switcher */}
+        <main className="flex-1 relative flex flex-col min-w-0">
+          {activeTab === 'editor' && (
+            <CodeEditor
+              code={code}
+              setCode={setCode}
+              auditIssues={auditResult.issues}
+              auditScore={auditResult.score}
+              onRunAudit={handleRunAudit}
+              onResetCode={handleResetCode}
+              onOpenGithub={(tab?: 'import' | 'export') => handleOpenGithubModal(tab || 'import')}
+            />
+          )}
 
-        {activeTab === 'simulator' && <ExecutionSandbox code={code} />}
+          {activeTab === 'pda' && <PdaVisualizer />}
 
-        {activeTab === 'sdk' && <SdkAndIdlViewer code={code} onOpenGithub={() => handleOpenGithubModal('export')} />}
+          {activeTab === 'simulator' && <ExecutionSandbox code={code} />}
 
-        {activeTab === 'rust_engine' && <RustEngineViewer />}
+          {activeTab === 'sdk' && <SdkAndIdlViewer code={code} onOpenGithub={() => handleOpenGithubModal('export')} />}
 
-        {activeTab === 'guide' && <SecurityGuide />}
-      </main>
+          {activeTab === 'rust_engine' && <RustEngineViewer />}
+
+          {activeTab === 'guide' && <SecurityGuide />}
+        </main>
+      </div>
 
       {/* Interactive System Tour and Tutorial Modal */}
       <SystemTourModal
