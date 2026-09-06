@@ -1,11 +1,4 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-# This workflow will install Deno then run `deno lint` and `deno test`.
-# For more information see: https://github.com/denoland/setup-deno
-
+# NIST SP 800-218 & OpenSSF Scorecard Hardened Deno CI Workflow
 name: Deno
 
 on:
@@ -14,29 +7,35 @@ on:
   pull_request:
     branches: ["main"]
 
-permissions:
-  contents: read
+# Minimize GITHUB_TOKEN default permissions according to least-privilege principle
+permissions: {}
 
 jobs:
   test:
+    name: Quality Assurance & Automated Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        # actions/checkout v4.2.2 pinned by full commit SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
       - name: Setup Deno
-        # uses: denoland/setup-deno@v1
-        uses: denoland/setup-deno@61fe2df320078202e33d7d5ad347e7dcfa0e8f31  # v1.1.2
+        # denoland/setup-deno v2.0.2 pinned by full commit SHA
+        uses: denoland/setup-deno@041b854f97b325bd60e53e9dc2de9cb9f9fa0c40
         with:
-          deno-version: v1.x
+          deno-version: v2.x
 
-      # Uncomment this step to verify the use of 'deno fmt' on each commit.
-      # - name: Verify formatting
-      #   run: deno fmt --check
-
-      - name: Run linter
+      - name: Run Linter
         run: deno lint
 
-      - name: Run tests
-        run: deno test -A
+      - name: Run Format Check
+        run: deno fmt --check
+
+      - name: Run Tests
+        # Restrict permissions instead of full bypass (-A) to enforce least privilege
+        run: deno test --allow-read --allow-env
