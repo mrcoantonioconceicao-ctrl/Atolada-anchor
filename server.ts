@@ -21,7 +21,7 @@ app.use(
       }
       return compression.filter(req, res);
     },
-  })
+  }) as unknown as express.RequestHandler
 );
 
 // 2. CORS configuration with safe defaults

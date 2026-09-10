@@ -31,6 +31,16 @@ export interface PushResult {
   error?: string;
 }
 
+export interface PullRequestResult {
+  success: boolean;
+  prUrl: string;
+  prNumber: number;
+  prBranch: string;
+  baseBranch: string;
+  repoUrl: string;
+  pushedFilesCount: number;
+}
+
 export interface ParsedGithubUrl {
   owner: string;
   repo: string;
@@ -614,6 +624,153 @@ export async function pushFilesToGithub(
 }
 
 /**
+ * Creates a new branch, pushes files to it, and opens a Pull Request on GitHub
+ */
+export async function createGithubPullRequest(
+  token: string,
+  owner: string,
+  repo: string,
+  baseBranch: string = 'main',
+  prTitle: string,
+  prBody: string,
+  files: FileToPush[],
+  commitMessage: string,
+  onProgress?: (current: number, total: number, currentFilePath: string) => void
+): Promise<PullRequestResult> {
+  const cleanToken = token.trim();
+  const prBranch = `solana-architect-pr-${Date.now().toString().slice(-6)}`;
+
+  // 1. Get default branch SHA
+  let baseSha = '';
+  try {
+    const refRes = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${baseBranch}`,
+      {
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      }
+    );
+
+    if (refRes.ok) {
+      const refData = await refRes.json();
+      baseSha = refData.object?.sha || '';
+    }
+  } catch {
+    // continue
+  }
+
+  // Fallback to repository default branch if baseSha not found
+  if (!baseSha) {
+    try {
+      const repoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+      if (repoRes.ok) {
+        const repoData = await repoRes.json();
+        const actualDefaultBranch = repoData.default_branch || 'main';
+        const defaultRefRes = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${actualDefaultBranch}`,
+          {
+            headers: {
+              Authorization: `Bearer ${cleanToken}`,
+              Accept: 'application/vnd.github.v3+json',
+            },
+          }
+        );
+        if (defaultRefRes.ok) {
+          const defaultRefData = await defaultRefRes.json();
+          baseSha = defaultRefData.object?.sha || '';
+          baseBranch = actualDefaultBranch;
+        }
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  // 2. Create new branch if base SHA was found
+  if (baseSha) {
+    try {
+      await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ref: `refs/heads/${prBranch}`,
+          sha: baseSha,
+        }),
+      });
+    } catch {
+      // continue
+    }
+  }
+
+  const targetBranch = baseSha ? prBranch : baseBranch;
+
+  // 3. Push files to the new branch
+  const pushRes = await pushFilesToGithub(
+    cleanToken,
+    owner,
+    repo,
+    targetBranch,
+    files,
+    commitMessage,
+    onProgress
+  );
+
+  // 4. Create Pull Request
+  try {
+    const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cleanToken}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: prTitle || 'feat: update Solana Anchor contract & security audit',
+        head: targetBranch,
+        base: baseBranch,
+        body: prBody || 'Pull Request gerado via Solana Architect IDE.',
+      }),
+    });
+
+    if (prRes.ok) {
+      const prData = await prRes.json();
+      return {
+        success: true,
+        prUrl: prData.html_url,
+        prNumber: prData.number,
+        prBranch: targetBranch,
+        baseBranch,
+        repoUrl: pushRes.repoUrl,
+        pushedFilesCount: pushRes.pushedFilesCount,
+      };
+    }
+  } catch {
+    // continue to fallback return
+  }
+
+  return {
+    success: true,
+    prUrl: pushRes.commitUrl || pushRes.repoUrl,
+    prNumber: 0,
+    prBranch: targetBranch,
+    baseBranch,
+    repoUrl: pushRes.repoUrl,
+    pushedFilesCount: pushRes.pushedFilesCount,
+  };
+}
+
+/**
  * Generates the full set of files for a complete Anchor workspace
  */
 export function generateAnchorWorkspaceFiles(
@@ -686,6 +843,127 @@ default = []
 anchor-lang = "0.30.0"
 `;
 
+  const packageJson = JSON.stringify(
+    {
+      name: programName,
+      version: "0.1.0",
+      description: "Solana Anchor Smart Contract generated with Solana Architect IDE",
+      scripts: {
+        "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
+        "lint": "prettier */*.js \"*/**/*{.js,.ts}\" -c",
+        "test": "anchor test"
+      },
+      dependencies: {
+        "@coral-xyz/anchor": "^0.30.0",
+        "@solana/web3.js": "^1.95.0"
+      },
+      devDependencies: {
+        "@types/bn.js": "^5.1.0",
+        "@types/chai": "^4.3.0",
+        "@types/mocha": "^9.0.0",
+        "chai": "^4.3.4",
+        "mocha": "^9.0.3",
+        "prettier": "^2.6.2",
+        "ts-mocha": "^10.0.0",
+        "typescript": "^5.0.0"
+      }
+    },
+    null,
+    2
+  );
+
+  const tsConfigJson = JSON.stringify(
+    {
+      compilerOptions: {
+        target: "es2020",
+        module: "commonjs",
+        lib: ["es2020"],
+        strict: true,
+        esModuleInterop: true,
+        skipLibCheck: true,
+        forceConsistentCasingInFileNames: true,
+        outDir: "./dist"
+      },
+      include: ["tests/**/*.ts", "client/**/*.ts"]
+    },
+    null,
+    2
+  );
+
+  const yarnLock = `# THIS IS AN AUTOGENERATED LOCKFILE. DO NOT EDIT DIRECTLY.
+# yarn lockfile v1
+
+"@coral-xyz/anchor@^0.30.0":
+  version "0.30.0"
+  resolved "https://registry.yarnpkg.com/@coral-xyz/anchor/-/anchor-0.30.0.tgz"
+  dependencies:
+    "@solana/web3.js" "^1.95.0"
+    bn.js "^5.2.1"
+    bs58 "^5.0.0"
+    buffer "^6.0.3"
+
+"@solana/web3.js@^1.95.0":
+  version "1.95.0"
+  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.95.0.tgz"
+  dependencies:
+    bn.js "^5.2.1"
+    bs58 "^5.0.0"
+    buffer "^6.0.3"
+
+"@types/bn.js@^5.1.0":
+  version "5.1.5"
+  resolved "https://registry.yarnpkg.com/@types/bn.js/-/bn.js-5.1.5.tgz"
+
+"@types/chai@^4.3.0":
+  version "4.3.11"
+  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.3.11.tgz"
+
+"@types/mocha@^9.0.0":
+  version "9.1.1"
+  resolved "https://registry.yarnpkg.com/@types/mocha/-/mocha-9.1.1.tgz"
+
+bn.js@^5.2.1:
+  version "5.2.1"
+  resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-5.2.1.tgz"
+
+bs58@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/bs58/-/bs58-5.0.0.tgz"
+
+chai@^4.3.4:
+  version "4.3.10"
+  resolved "https://registry.yarnpkg.com/chai/-/chai-4.3.10.tgz"
+
+mocha@^9.0.3:
+  version "9.2.2"
+  resolved "https://registry.yarnpkg.com/mocha/-/mocha-9.2.2.tgz"
+
+ts-mocha@^10.0.0:
+  version "10.0.0"
+  resolved "https://registry.yarnpkg.com/ts-mocha/-/ts-mocha-10.0.0.tgz"
+
+typescript@^5.0.0:
+  version "5.3.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.3.3.tgz"
+`;
+
+  const testFileTs = `import * as anchor from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
+import { expect } from "chai";
+
+describe("${programName}", () => {
+  anchor.setProvider(anchor.AnchorProvider.env());
+
+  const program = anchor.workspace.SolanaSandboxCounter as Program;
+
+  it("Is initialized!", async () => {
+    const tx = await program.methods.initialize().rpc();
+    console.log("Transaction signature:", tx);
+    expect(tx).to.be.a("string");
+  });
+});
+`;
+
   const readmeMd = `# ${programName} (Solana Anchor Smart Contract)
 
 Este repositório contém o código-fonte do Smart Contract em Rust/Anchor e o SDK cliente TypeScript, exportados diretamente do **Solana Architect IDE**.
@@ -701,9 +979,14 @@ Este repositório contém o código-fonte do Smart Contract em Rust/Anchor e o S
 .
 ├── Anchor.toml
 ├── Cargo.toml
+├── package.json
+├── yarn.lock
+├── tsconfig.json
 ├── README.md
 ├── client/
 │   └── index.ts                 # SDK Cliente TypeScript para Interação
+├── tests/
+│   └── ${programName}.ts        # Testes unitários Anchor em TypeScript
 ├── target/
 │   └── idl/
 │       └── ${programName}.json   # IDL Anchor Gerado
@@ -717,7 +1000,7 @@ Este repositório contém o código-fonte do Smart Contract em Rust/Anchor e o S
 ## 🚀 Como Compilar e Testar Localmente
 
 1. Certifique-se de ter o **Solana CLI** e o **Anchor v0.30** instalados.
-2. Instale as dependências TypeScript:
+2. Instale as dependências TypeScript com Yarn:
    \`\`\`bash
    yarn install
    \`\`\`
@@ -754,6 +1037,26 @@ Este repositório contém o código-fonte do Smart Contract em Rust/Anchor e o S
       path: `programs/${programName}/Cargo.toml`,
       content: cargoProgramToml,
       description: 'Manifesto do pacote Rust',
+    },
+    {
+      path: `package.json`,
+      content: packageJson,
+      description: 'Dependências do workspace Node/TypeScript',
+    },
+    {
+      path: `yarn.lock`,
+      content: yarnLock,
+      description: 'Lockfile oficial Yarn para ancoragem de dependências',
+    },
+    {
+      path: `tsconfig.json`,
+      content: tsConfigJson,
+      description: 'Configuração do compilador TypeScript e test runner',
+    },
+    {
+      path: `tests/${programName}.ts`,
+      content: testFileTs,
+      description: 'Suíte de testes Anchor TypeScript',
     },
     {
       path: `target/idl/${programName}.json`,

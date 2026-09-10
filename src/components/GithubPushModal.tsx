@@ -9,6 +9,7 @@ import {
   getUserRepositories,
   createNewRepository,
   pushFilesToGithub,
+  createGithubPullRequest,
   generateAnchorWorkspaceFiles,
   fetchPublicGithubRepository,
   fetchPublicGithubFileContent,
@@ -21,6 +22,7 @@ import {
   AlertCircle,
   FolderPlus,
   GitBranch,
+  GitPullRequest,
   FileCode,
   Package,
   ExternalLink,
@@ -95,12 +97,25 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
   const [targetBranch, setTargetBranch] = useState<string>('main');
   const [commitMessage, setCommitMessage] = useState<string>('feat: update Solana Anchor contract via Solana Architect');
   const [exportScope, setExportScope] = useState<'workspace' | 'contract_only'>('workspace');
+  const [pushMode, setPushMode] = useState<'direct' | 'pr'>('pr');
+  const [prTitle, setPrTitle] = useState<string>('feat: update Solana Anchor smart contract & audit report');
+  const [prBody, setPrBody] = useState<string>(
+    `## 🛡️ Solana Anchor Smart Contract & Security Audit PR\n\nEste Pull Request foi gerado automaticamente pelo **Solana Architect IDE**.\n\n### 📋 Detalhes da Auditoria:\n- **Audit Security Score:** \`${auditScore}/100\`\n- **Framework:** Anchor v0.30.0\n- **Status:** Validado via AST Static Analysis & PDA Verifier`
+  );
 
   // Execution & Progress state
   const [isPushing, setIsPushing] = useState<boolean>(false);
   const [pushProgress, setPushProgress] = useState<{ current: number; total: number; file: string } | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
-  const [pushSuccess, setPushSuccess] = useState<{ repoUrl: string; commitUrl: string; fileCount: number } | null>(null);
+  const [pushSuccess, setPushSuccess] = useState<{
+    repoUrl: string;
+    commitUrl: string;
+    fileCount: number;
+    isPr?: boolean;
+    prUrl?: string;
+    prNumber?: number;
+    prBranch?: string;
+  } | null>(null);
 
   // Program ID
   const programId = 'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS';
@@ -283,24 +298,51 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
       // 2. Prepare files
       const files = prepareFilesToPush();
 
-      // 3. Push files to repository
-      const result = await pushFilesToGithub(
-        token,
-        githubUser.login,
-        targetRepoName,
-        branchName,
-        files,
-        commitMessage,
-        (current, total, file) => {
-          setPushProgress({ current, total, file });
-        }
-      );
+      // 3. Execute Direct Push or Create Pull Request
+      if (pushMode === 'pr') {
+        const prResult = await createGithubPullRequest(
+          token,
+          githubUser.login,
+          targetRepoName,
+          branchName,
+          prTitle,
+          prBody,
+          files,
+          commitMessage,
+          (current, total, file) => {
+            setPushProgress({ current, total, file });
+          }
+        );
 
-      setPushSuccess({
-        repoUrl: result.repoUrl,
-        commitUrl: result.commitUrl || result.repoUrl,
-        fileCount: result.pushedFilesCount,
-      });
+        setPushSuccess({
+          repoUrl: prResult.repoUrl,
+          commitUrl: prResult.prUrl,
+          fileCount: prResult.pushedFilesCount,
+          isPr: true,
+          prUrl: prResult.prUrl,
+          prNumber: prResult.prNumber,
+          prBranch: prResult.prBranch,
+        });
+      } else {
+        const result = await pushFilesToGithub(
+          token,
+          githubUser.login,
+          targetRepoName,
+          branchName,
+          files,
+          commitMessage,
+          (current, total, file) => {
+            setPushProgress({ current, total, file });
+          }
+        );
+
+        setPushSuccess({
+          repoUrl: result.repoUrl,
+          commitUrl: result.commitUrl || result.repoUrl,
+          fileCount: result.pushedFilesCount,
+          isPr: false,
+        });
+      }
     } catch (err: any) {
       setPushError(err.message || 'Erro ao enviar os arquivos para o GitHub.');
     } finally {
@@ -847,29 +889,74 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
                     </div>
                   )}
 
-                  {/* Branch & Commit Message */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                    <div className="sm:col-span-1">
-                      <label className="block text-[10px] font-mono text-[#8b949e] mb-1">Branch:</label>
-                      <input
-                        type="text"
-                        value={targetBranch}
-                        onChange={(e) => setTargetBranch(e.target.value)}
-                        placeholder="main"
-                        className="w-full bg-[#161b22] text-xs font-mono text-white border border-[#30363d] rounded px-2.5 py-1 focus:outline-none focus:border-[#58a6ff]"
-                      />
+                  {/* Push Mode Selection (Pull Request vs Direct Push) */}
+                  <div className="pt-2 border-t border-[#30363d]/60 space-y-2">
+                    <label className="block text-[11px] font-mono text-[#8b949e]">Método de Publicação:</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPushMode('pr')}
+                        className={`p-2.5 rounded border text-left transition-all ${
+                          pushMode === 'pr'
+                            ? 'bg-[#1f6feb]/15 border-[#1f6feb] text-white'
+                            : 'bg-[#161b22] border-[#30363d] text-[#8b949e] hover:border-[#8b949e]/50'
+                        }`}
+                      >
+                        <div className="font-bold text-xs flex items-center gap-1.5 text-[#58a6ff]">
+                          <GitPullRequest className="w-3.5 h-3.5" />
+                          <span>Criar Pull Request (PR)</span>
+                        </div>
+                        <div className="text-[10px] text-[#8b949e] mt-0.5">
+                          Cria uma nova branch e abre um PR formal com laudo de auditoria no GitHub
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPushMode('direct')}
+                        className={`p-2.5 rounded border text-left transition-all ${
+                          pushMode === 'direct'
+                            ? 'bg-[#238636]/15 border-[#238636] text-white'
+                            : 'bg-[#161b22] border-[#30363d] text-[#8b949e] hover:border-[#8b949e]/50'
+                        }`}
+                      >
+                        <div className="font-bold text-xs flex items-center gap-1.5 text-[#7ee787]">
+                          <GitBranch className="w-3.5 h-3.5" />
+                          <span>Commit Direto na Branch</span>
+                        </div>
+                        <div className="text-[10px] text-[#8b949e] mt-0.5">
+                          Envia os arquivos diretamente para a branch selecionada (ex: main)
+                        </div>
+                      </button>
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-[10px] font-mono text-[#8b949e] mb-1">Mensagem do Commit:</label>
-                      <input
-                        type="text"
-                        value={commitMessage}
-                        onChange={(e) => setCommitMessage(e.target.value)}
-                        placeholder="ex: feat: update Solana Anchor contract"
-                        className="w-full bg-[#161b22] text-xs font-mono text-white border border-[#30363d] rounded px-2.5 py-1 focus:outline-none focus:border-[#58a6ff]"
-                      />
-                    </div>
+                    {pushMode === 'pr' && (
+                      <div className="space-y-2 pt-1 bg-[#161b22] p-2.5 rounded border border-[#30363d]">
+                        <div>
+                          <label className="block text-[10px] font-mono text-[#8b949e] mb-1">
+                            Título do Pull Request:
+                          </label>
+                          <input
+                            type="text"
+                            value={prTitle}
+                            onChange={(e) => setPrTitle(e.target.value)}
+                            className="w-full bg-[#0d1117] text-xs font-mono text-white border border-[#30363d] rounded px-2.5 py-1 focus:outline-none focus:border-[#58a6ff]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-mono text-[#8b949e] mb-1">
+                            Descrição / Resumo do PR:
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={prBody}
+                            onChange={(e) => setPrBody(e.target.value)}
+                            className="w-full bg-[#0d1117] text-xs font-mono text-white border border-[#30363d] rounded px-2.5 py-1 focus:outline-none focus:border-[#58a6ff] resize-none"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -973,20 +1060,29 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
                 <div className="p-3.5 bg-[#238636]/15 border border-[#238636]/50 text-[#7ee787] rounded-lg text-[11px] space-y-2">
                   <div className="font-bold flex items-center gap-1.5 text-xs">
                     <CheckCircle2 className="w-4 h-4 text-[#7ee787]" />
-                    <span>Smart Contract sincronizado com sucesso no GitHub!</span>
+                    <span>
+                      {pushSuccess.isPr
+                        ? 'Pull Request aberto com sucesso no GitHub!'
+                        : 'Smart Contract sincronizado com sucesso no GitHub!'}
+                    </span>
                   </div>
                   <p className="text-[#c9d1d9] text-[11px]">
-                    Foram enviados {pushSuccess.fileCount} arquivos para a branch{' '}
-                    <strong className="text-white font-mono">{targetBranch || 'main'}</strong>.
+                    {pushSuccess.isPr
+                      ? `Foram enviados ${pushSuccess.fileCount} arquivos e o Pull Request foi aberto para mesclagem na branch ${pushSuccess.baseBranch || targetBranch}.`
+                      : `Foram enviados ${pushSuccess.fileCount} arquivos diretamente para a branch ${targetBranch || 'main'}.`}
                   </p>
                   <div className="flex items-center gap-2 pt-1 font-mono">
                     <a
-                      href={pushSuccess.commitUrl}
+                      href={pushSuccess.prUrl || pushSuccess.commitUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded text-[11px] flex items-center gap-1.5 transition-colors"
                     >
-                      <span>Ver Repositório no GitHub</span>
+                      <span>
+                        {pushSuccess.isPr
+                          ? 'Ver Pull Request no GitHub'
+                          : 'Ver Repositório no GitHub'}
+                      </span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -1003,11 +1099,17 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
                   >
                     {isPushing ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : pushMode === 'pr' ? (
+                      <GitPullRequest className="w-4 h-4" />
                     ) : (
                       <Github className="w-4 h-4" />
                     )}
                     <span>
-                      {isPushing ? 'Enviando Arquivos...' : 'Confirmar e Enviar para o GitHub'}
+                      {isPushing
+                        ? 'Processando...'
+                        : pushMode === 'pr'
+                        ? 'Criar e Abrir Pull Request no GitHub'
+                        : 'Confirmar e Enviar para o GitHub'}
                     </span>
                   </button>
                 </div>
