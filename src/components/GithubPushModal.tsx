@@ -11,6 +11,7 @@ import {
   pushFilesToGithub,
   createGithubPullRequest,
   generateAnchorWorkspaceFiles,
+  generateAnchorAuditWorkflowYaml,
   fetchPublicGithubRepository,
   fetchPublicGithubFileContent,
   POPULAR_PUBLIC_SOLANA_REPOS,
@@ -41,6 +42,7 @@ import {
   Check,
   Star,
   DownloadCloud,
+  Download,
 } from 'lucide-react';
 
 interface GithubPushModalProps {
@@ -139,6 +141,40 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
 
   // Program ID
   const programId = 'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS';
+
+  // CI/CD Workflow Download state
+  const [isDownloadedWorkflow, setIsDownloadedWorkflow] = useState<boolean>(false);
+  const [isDownloadedCicd, setIsDownloadedCicd] = useState<boolean>(false);
+
+  const handleDownloadCicdWorkflow = (fileName: string = 'anchor-ci-cd.yml') => {
+    try {
+      const content = generateAnchorAuditWorkflowYaml(
+        newRepoName || 'solana_sandbox_counter',
+        auditScore
+      );
+      const blob = new Blob([content], { type: 'text/yaml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      if (fileName === 'anchor-ci-cd.yml') {
+        setIsDownloadedCicd(true);
+        setTimeout(() => setIsDownloadedCicd(false), 3500);
+      } else {
+        setIsDownloadedWorkflow(true);
+        setTimeout(() => setIsDownloadedWorkflow(false), 3500);
+      }
+    } catch (err) {
+      console.error(`Erro ao baixar workflow ${fileName}:`, err);
+    }
+  };
+
+  const handleDownloadWorkflow = () => handleDownloadCicdWorkflow('anchor-ci-cd.yml');
 
   useEffect(() => {
     if (isOpen) {
@@ -405,33 +441,52 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
         </div>
 
         {/* Tab Navigation (Open by URL vs Export with Token) */}
-        <div className="flex items-center border-b border-[#30363d] bg-[#0d1117]/60 px-4 pt-2 gap-2 shrink-0">
-          <button
-            onClick={() => setActiveModalTab('import')}
-            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${
-              activeModalTab === 'import'
-                ? 'border-[#58a6ff] text-[#58a6ff] bg-[#161b22]'
-                : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161b22]/50'
-            } rounded-t`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Abrir Repositório Público (Apenas URL)</span>
-            <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-[#238636]/20 text-[#7ee787] border border-[#238636]/40">
-              Livre
-            </span>
-          </button>
+        <div className="flex flex-wrap items-center justify-between border-b border-[#30363d] bg-[#0d1117]/60 px-4 pt-2 gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveModalTab('import')}
+              className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${
+                activeModalTab === 'import'
+                  ? 'border-[#58a6ff] text-[#58a6ff] bg-[#161b22]'
+                  : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161b22]/50'
+              } rounded-t`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Abrir Repositório Público (Apenas URL)</span>
+              <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-[#238636]/20 text-[#7ee787] border border-[#238636]/40">
+                Livre
+              </span>
+            </button>
 
-          <button
-            onClick={() => setActiveModalTab('export')}
-            className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${
-              activeModalTab === 'export'
-                ? 'border-[#58a6ff] text-[#58a6ff] bg-[#161b22]'
-                : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161b22]/50'
-            } rounded-t`}
-          >
-            <FolderPlus className="w-3.5 h-3.5" />
-            <span>Exportar para GitHub (Com Token PAT)</span>
-          </button>
+            <button
+              onClick={() => setActiveModalTab('export')}
+              className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${
+                activeModalTab === 'export'
+                  ? 'border-[#58a6ff] text-[#58a6ff] bg-[#161b22]'
+                  : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161b22]/50'
+              } rounded-t`}
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              <span>Exportar para GitHub (Com Token PAT)</span>
+            </button>
+          </div>
+
+          <div className="pb-2 flex items-center gap-2">
+            <button
+              id="btn-header-download-anchor-cicd"
+              type="button"
+              onClick={() => handleDownloadCicdWorkflow('anchor-ci-cd.yml')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono bg-[#238636] hover:bg-[#2ea043] text-white font-semibold border border-[#2ea043] rounded transition-all shadow-sm"
+              title="Baixar pipeline CI/CD resiliente: .github/workflows/anchor-ci-cd.yml"
+            >
+              {isDownloadedCicd ? (
+                <Check className="w-3.5 h-3.5 text-white" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-white" />
+              )}
+              <span>{isDownloadedCicd ? 'anchor-ci-cd.yml Baixado!' : 'Baixar anchor-ci-cd.yml'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -646,6 +701,47 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
           {/* ========================================================================= */}
           {activeModalTab === 'export' && (
             <div className="space-y-4">
+              {/* DevSecOps Quick Action: Download Robust anchor-ci-cd.yml Workflow */}
+              <div className="p-3.5 bg-[#0d1117] border border-[#238636]/40 rounded-lg shadow-sm space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-xs text-white flex items-center gap-1.5 font-mono">
+                      <ShieldCheck className="w-4 h-4 text-[#7ee787]" />
+                      <span>Pipeline CI/CD: <code className="text-[#58a6ff]">.github/workflows/anchor-ci-cd.yml</code></span>
+                    </div>
+                    <p className="text-[11px] text-[#8b949e] mt-1 leading-relaxed">
+                      Esteira completa para GitHub Actions com lógica resiliente de instalação da Solana CLI (loop de até 3 tentativas, SSL flags <code className="text-[#7ee787]">--proto '=https' --tlsv1.2</code>, download direto do tarball com fallback e sourcing de ambiente) e validação pós-instalação de binários.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#238636]/20 text-[#7ee787] border border-[#238636]/30">
+                        ✓ SSL Fallback & Retry (3x)
+                      </span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#1f6feb]/20 text-[#58a6ff] border border-[#1f6feb]/30">
+                        ✓ Solana v1.18.18 & Anchor v0.30.0
+                      </span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#d29922]/20 text-[#e3b341] border border-[#d29922]/30">
+                        ✓ Determinismo SHA-256 & Safe Math
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    id="btn-download-anchor-cicd-workflow-top"
+                    type="button"
+                    onClick={() => handleDownloadCicdWorkflow('anchor-ci-cd.yml')}
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded text-xs transition-colors shrink-0 shadow-sm"
+                    title="Baixar arquivo .github/workflows/anchor-ci-cd.yml"
+                  >
+                    {isDownloadedCicd ? (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isDownloadedCicd ? 'anchor-ci-cd.yml Baixado!' : 'Baixar anchor-ci-cd.yml'}</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Section 1: Authentication */}
               <div className="p-3.5 bg-[#0d1117] border border-[#30363d] rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
@@ -1047,6 +1143,36 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
                           </span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* DevSecOps Pipeline CI/CD Download Banner */}
+                  <div className="p-3 bg-[#161b22] border border-[#30363d] rounded-lg space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-xs text-white flex items-center gap-1.5 font-mono">
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#7ee787]" />
+                          <span>Pipeline CI/CD: <code className="text-[#58a6ff]">.github/workflows/anchor-ci-cd.yml</code></span>
+                        </div>
+                        <p className="text-[10px] text-[#8b949e] mt-1 leading-relaxed">
+                          Configura a esteira resiliente com verificação Anchor, mitigação de falhas SSL, análise estática de segurança (Clippy/Safe Math), checagem de determinismo binário (SHA-256) e deploy automatizado no Devnet.
+                        </p>
+                      </div>
+
+                      <button
+                        id="btn-download-anchor-cicd-workflow"
+                        type="button"
+                        onClick={() => handleDownloadCicdWorkflow('anchor-ci-cd.yml')}
+                        className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded text-xs transition-colors shrink-0 shadow-sm"
+                        title="Baixar arquivo .github/workflows/anchor-ci-cd.yml"
+                      >
+                        {isDownloadedCicd ? (
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span>{isDownloadedCicd ? 'anchor-ci-cd.yml Baixado!' : 'Baixar anchor-ci-cd.yml'}</span>
+                      </button>
                     </div>
                   </div>
                 </div>

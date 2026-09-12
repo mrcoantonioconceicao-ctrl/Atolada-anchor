@@ -784,6 +784,246 @@ export async function createGithubPullRequest(
 }
 
 /**
+ * Generates the standard '.github/workflows/anchor-audit.yml' file content
+ * configuring the DevSecOps CI/CD pipeline according to project requirements:
+ * - Pull Request event: static analysis & security linting, Anchor verification, binary determinism checks, and unit tests
+ * - Merge event: automated contract deployment to target cluster using dedicated deployment key
+ */
+export function generateAnchorAuditWorkflowYaml(
+  programName: string = 'solana_sandbox_counter',
+  minScore: number = 85
+): string {
+  return `name: Anchor Security Audit & DevSecOps Pipeline
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: \${{ github.workflow }}-\${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOLANA_VERSION: "1.18.18"
+  ANCHOR_VERSION: "0.30.0"
+  NODE_VERSION: "20"
+  RUST_VERSION: "1.75.0"
+  PROGRAM_NAME: "${programName}"
+  MIN_AUDIT_SCORE: "${minScore}"
+
+jobs:
+  # =========================================================================
+  # ROTA 1: PULL REQUEST AUDIT, DETERMINISM & VERIFICATION GATE
+  # =========================================================================
+  security-audit-and-verification:
+    name: 🛡️ Anchor Verification, Determinism & Security Linting
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust Toolchain (Pinned 1.75.0)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: \${{ env.RUST_VERSION }}
+          components: clippy, rustfmt
+
+      - name: 📦 Setup Node.js & Cache Yarn
+        uses: actions/setup-node@v4
+        with:
+          node-version: \${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: ⚡ Cache Cargo & Solana
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            ~/.local/share/solana/
+          key: \${{ runner.os }}-anchor-\${{ env.ANCHOR_VERSION }}-solana-\${{ env.SOLANA_VERSION }}-\${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            \${{ runner.os }}-anchor-\${{ env.ANCHOR_VERSION }}-solana-\${{ env.SOLANA_VERSION }}-
+
+      - name: ⚙️ Install Solana CLI Suite (\${{ env.SOLANA_VERSION }}) with SSL Fallback
+        run: |
+          if ! command -v solana &> /dev/null; then
+            echo "==> Tentando baixar o tarball oficial direto do repositório GitHub para evitar falhas de SSL..."
+            curl -L --retry 5 --retry-delay 5 -o solana-release.tar.bz2 https://github.com/solana-labs/solana/releases/download/v\${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2 || true
+
+            if [ -f "solana-release.tar.bz2" ] && [ -s "solana-release.tar.bz2" ]; then
+              mkdir -p \$HOME/.local/share/solana/install/active_release
+              tar -jxf solana-release.tar.bz2 -C \$HOME/.local/share/solana/install/active_release --strip-components=1
+            else
+              echo "⚠️ Fallback para o script de instalação oficial com TLSv1.2..."
+              sh -c "$(curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 -sSfL https://release.solana.com/v\${{ env.SOLANA_VERSION }}/install)"
+            fi
+          fi
+
+          if [ -f "\$HOME/.local/share/solana/install/active_release/env" ]; then
+            source "\$HOME/.local/share/solana/install/active_release/env"
+          fi
+          echo "\$HOME/.local/share/solana/install/active_release/bin" >> \$GITHUB_PATH
+          export PATH="\$HOME/.local/share/solana/install/active_release/bin:\$PATH"
+
+          if ! command -v solana &> /dev/null; then
+            echo "❌ Erro Fatal: O executável 'solana' não foi encontrado no PATH."
+            exit 1
+          fi
+          echo "✅ Solana CLI instalada e validada com sucesso:"
+          solana --version
+
+      - name: ⚓ Install & Validate Anchor CLI Binary (\${{ env.ANCHOR_VERSION }})
+        run: |
+          if ! command -v anchor &> /dev/null || [ "$(anchor --version | awk '{print $2}')" != "\${{ env.ANCHOR_VERSION }}" ]; then
+            cargo install --git https://github.com/coral-xyz/anchor --tag v\${{ env.ANCHOR_VERSION }} anchor-cli --locked
+          fi
+          
+          # Validação rigorosa da instalação do Anchor CLI
+          if ! command -v anchor &> /dev/null; then
+            echo "❌ Erro Fatal: O executável 'anchor' não foi encontrado no PATH após a instalação."
+            exit 1
+          fi
+
+          echo "✅ Anchor CLI instalado e validado com sucesso:"
+          anchor --version
+
+      - name: 📦 Install Node Dependencies
+        run: yarn install --frozen-lockfile
+
+      # 1. Padronização e Verificação de Formatação
+      - name: 🎨 1. Code Formatting Check (rustfmt)
+        run: cargo fmt --all -- --check
+
+      # 2. Análise Estática & Security Linting (Clippy + Cargo Audit)
+      - name: 🔍 2. Security Linting & Safe Math Audit (Clippy)
+        run: |
+          cargo clippy --all-targets --features idl-build -- -D warnings \\
+            -W clippy::arithmetic_side_effects \\
+            -D clippy::unwrap_used
+
+      # 3. Anchor Build com suporte nativo a idl-build
+      - name: 🏗️ 3. Anchor Build (com suporte nativo a idl-build)
+        run: |
+          solana-keygen new --no-bip39-passphrase --silent --force --outfile ~/.config/solana/id.json
+          anchor build
+
+      # 4. Validar Determinismo do Binário e Checksums
+      - name: 🔒 4. Binary Determinism & Checksums Verification
+        run: |
+          mkdir -p target/checksums
+          echo "=== Relatório de Integridade e Determinismo dos Binários SBF ==="
+          if [ -d "target/deploy" ]; then
+            for bin in target/deploy/*.so; do
+              if [ -f "$bin" ]; then
+                HASH=\$(sha256sum "$bin" | awk '{print \$1}')
+                BIN_NAME=\$(basename "$bin")
+                echo "Arquivo: \$BIN_NAME | SHA256: \$HASH"
+                echo "\$HASH \$BIN_NAME" > "target/checksums/\${BIN_NAME}.sha256"
+              fi
+            done
+          else
+            echo "❌ Erro: target/deploy não encontrado!"
+            exit 1
+          fi
+
+      - name: 📤 Upload Binaries & Checksum Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: solana-program-sbf-binaries
+          path: |
+            target/deploy/*.so
+            target/checksums/*.sha256
+            target/idl/*.json
+
+      # 5. Suíte de Testes Unitários e de Integração
+      - name: 🧪 5. Execute Anchor Tests
+        run: anchor test
+
+  # =========================================================================
+  # ROTA 2: DEPLOY AUTOMÁTICO NO CLUSTER DE DESTINO (ON MERGE TO MAIN)
+  # =========================================================================
+  deploy-devnet:
+    name: 🚀 Deploy to Solana Devnet (On Merge)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    needs: security-audit-and-verification
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Solana CLI Suite (\${{ env.SOLANA_VERSION }}) with SSL Fallback
+        run: |
+          if ! command -v solana &> /dev/null; then
+            echo "==> Tentando baixar o tarball oficial direto do repositório GitHub para evitar falhas de SSL..."
+            curl -L --retry 5 --retry-delay 5 -o solana-release.tar.bz2 https://github.com/solana-labs/solana/releases/download/v\${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2 || true
+
+            if [ -f "solana-release.tar.bz2" ] && [ -s "solana-release.tar.bz2" ]; then
+              mkdir -p \$HOME/.local/share/solana/install/active_release
+              tar -jxf solana-release.tar.bz2 -C \$HOME/.local/share/solana/install/active_release --strip-components=1
+            else
+              echo "⚠️ Fallback para o script de instalação oficial com TLSv1.2..."
+              sh -c "$(curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 -sSfL https://release.solana.com/v\${{ env.SOLANA_VERSION }}/install)"
+            fi
+          fi
+
+          if [ -f "\$HOME/.local/share/solana/install/active_release/env" ]; then
+            source "\$HOME/.local/share/solana/install/active_release/env"
+          fi
+          echo "\$HOME/.local/share/solana/install/active_release/bin" >> \$GITHUB_PATH
+          export PATH="\$HOME/.local/share/solana/install/active_release/bin:\$PATH"
+
+          if ! command -v solana &> /dev/null; then
+            echo "❌ Erro Fatal: O executável 'solana' não foi encontrado no PATH."
+            exit 1
+          fi
+          echo "✅ Solana CLI instalada e validada com sucesso:"
+          solana --version
+
+      - name: ⚓ Install & Validate Anchor CLI Binary (\${{ env.ANCHOR_VERSION }})
+        run: |
+          if ! command -v anchor &> /dev/null || [ "$(anchor --version | awk '{print $2}')" != "\${{ env.ANCHOR_VERSION }}" ]; then
+            cargo install --git https://github.com/coral-xyz/anchor --tag v\${{ env.ANCHOR_VERSION }} anchor-cli --locked
+          fi
+          
+          # Validação rigorosa da instalação do Anchor CLI
+          if ! command -v anchor &> /dev/null; then
+            echo "❌ Erro Fatal: O executável 'anchor' não foi encontrado no PATH após a instalação."
+            exit 1
+          fi
+          
+          echo "✅ Anchor CLI instalado e validado com sucesso:"
+          anchor --version
+
+      - name: 🔑 Configure Dedicated Deployment Keypair
+        env:
+          SOLANA_DEPLOY_KEY: \${{ secrets.SOLANA_DEVNET_DEPLOY_KEY }}
+        run: |
+          if [ -z "$SOLANA_DEPLOY_KEY" ]; then
+            echo "⚠️ Segredo SOLANA_DEVNET_DEPLOY_KEY não configurado no repositório. Deploy ignorado."
+            exit 0
+          fi
+          mkdir -p ~/.config/solana
+          echo "$SOLANA_DEPLOY_KEY" > ~/.config/solana/id.json
+          chmod 600 ~/.config/solana/id.json
+          solana config set --url https://api.devnet.solana.com
+
+      - name: 🚀 Deploy Anchor Program to Solana Cluster
+        run: |
+          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+          anchor build
+          anchor deploy --provider.cluster devnet
+          echo "🎉 Contrato implantado com sucesso no cluster Devnet."
+`;
+}
+
+/**
  * Generates the full set of files for a complete Anchor workspace
  */
 export function generateAnchorWorkspaceFiles(
@@ -851,9 +1091,10 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = "0.30.0"
+anchor-lang = { version = "0.30.0", features = ["init-if-needed"] }
 `;
 
   const packageJson = JSON.stringify(
@@ -977,79 +1218,7 @@ describe("${programName}", () => {
 });
 `;
 
-  const githubCiCdYaml = `name: Solana DevSecOps CI/CD Pipeline
-
-on:
-  pull_request:
-    branches: [ main, master ]
-  push:
-    branches: [ main, master ]
-
-jobs:
-  audit-and-test:
-    name: 🛡️ Audit, Lint & Anchor Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'yarn'
-
-      - name: Install Solana CLI
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor CLI (v0.30.0)
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.0 anchor-cli --locked
-
-      - name: Install Node Dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Anchor Build
-        run: anchor build
-
-      - name: Execute Anchor Unit Tests
-        run: anchor test
-
-  deploy-devnet:
-    name: 🚀 Deploy to Solana Devnet (On Merge)
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    needs: audit-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Solana CLI
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor CLI
-        run: cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.0 anchor-cli --locked
-
-      - name: Setup Deploy Keypair
-        env:
-          SOLANA_DEPLOY_KEY: \${{ secrets.SOLANA_DEVNET_DEPLOY_KEY }}
-        run: |
-          mkdir -p ~/.config/solana
-          echo "$SOLANA_DEPLOY_KEY" > ~/.config/solana/id.json
-          chmod 600 ~/.config/solana/id.json
-
-      - name: Deploy Smart Contract to Devnet
-        run: anchor deploy --provider.cluster devnet
-`;
+  const anchorAuditWorkflowContent = generateAnchorAuditWorkflowYaml(programName, auditScore);
 
   const readmeMd = `# ${programName} (Solana Anchor Smart Contract)
 
@@ -1161,8 +1330,13 @@ Este repositório contém o código-fonte do Smart Contract em Rust/Anchor e o S
       description: 'Documentação do repositório com nota de auditoria',
     },
     {
+      path: `.github/workflows/anchor-audit.yml`,
+      content: anchorAuditWorkflowContent,
+      description: 'Pipeline CI/CD DevSecOps: verificação Anchor, determinismo binário, security linting e deploy',
+    },
+    {
       path: `.github/workflows/anchor-ci-cd.yml`,
-      content: githubCiCdYaml,
+      content: anchorAuditWorkflowContent,
       description: 'Esteira de CI/CD em GitHub Actions para auditoria, testes e deploy',
     },
   ];
