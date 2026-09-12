@@ -39,6 +39,7 @@ export interface PullRequestResult {
   baseBranch: string;
   repoUrl: string;
   pushedFilesCount: number;
+  error?: string;
 }
 
 export interface ParsedGithubUrl {
@@ -754,20 +755,32 @@ export async function createGithubPullRequest(
         repoUrl: pushRes.repoUrl,
         pushedFilesCount: pushRes.pushedFilesCount,
       };
+    } else {
+      const prErrData = await prRes.json().catch(() => ({}));
+      const reason = prErrData.message || 'Branch criada, mas a abertura automática do PR retornou aviso do GitHub.';
+      return {
+        success: true,
+        prUrl: pushRes.commitUrl || `${pushRes.repoUrl}/tree/${targetBranch}`,
+        prNumber: 0,
+        prBranch: targetBranch,
+        baseBranch,
+        repoUrl: pushRes.repoUrl,
+        pushedFilesCount: pushRes.pushedFilesCount,
+        error: reason,
+      };
     }
-  } catch {
-    // continue to fallback return
+  } catch (err: any) {
+    return {
+      success: true,
+      prUrl: pushRes.commitUrl || `${pushRes.repoUrl}/tree/${targetBranch}`,
+      prNumber: 0,
+      prBranch: targetBranch,
+      baseBranch,
+      repoUrl: pushRes.repoUrl,
+      pushedFilesCount: pushRes.pushedFilesCount,
+      error: err?.message || 'Erro ao conectar à API de Pull Requests do GitHub.',
+    };
   }
-
-  return {
-    success: true,
-    prUrl: pushRes.commitUrl || pushRes.repoUrl,
-    prNumber: 0,
-    prBranch: targetBranch,
-    baseBranch,
-    repoUrl: pushRes.repoUrl,
-    pushedFilesCount: pushRes.pushedFilesCount,
-  };
 }
 
 /**
@@ -964,6 +977,80 @@ describe("${programName}", () => {
 });
 `;
 
+  const githubCiCdYaml = `name: Solana DevSecOps CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+jobs:
+  audit-and-test:
+    name: 🛡️ Audit, Lint & Anchor Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'yarn'
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor CLI (v0.30.0)
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.0 anchor-cli --locked
+
+      - name: Install Node Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Anchor Build
+        run: anchor build
+
+      - name: Execute Anchor Unit Tests
+        run: anchor test
+
+  deploy-devnet:
+    name: 🚀 Deploy to Solana Devnet (On Merge)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    needs: audit-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor CLI
+        run: cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.0 anchor-cli --locked
+
+      - name: Setup Deploy Keypair
+        env:
+          SOLANA_DEPLOY_KEY: \${{ secrets.SOLANA_DEVNET_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.config/solana
+          echo "$SOLANA_DEPLOY_KEY" > ~/.config/solana/id.json
+          chmod 600 ~/.config/solana/id.json
+
+      - name: Deploy Smart Contract to Devnet
+        run: anchor deploy --provider.cluster devnet
+`;
+
   const readmeMd = `# ${programName} (Solana Anchor Smart Contract)
 
 Este repositório contém o código-fonte do Smart Contract em Rust/Anchor e o SDK cliente TypeScript, exportados diretamente do **Solana Architect IDE**.
@@ -1072,6 +1159,11 @@ Este repositório contém o código-fonte do Smart Contract em Rust/Anchor e o S
       path: `README.md`,
       content: readmeMd,
       description: 'Documentação do repositório com nota de auditoria',
+    },
+    {
+      path: `.github/workflows/anchor-ci-cd.yml`,
+      content: githubCiCdYaml,
+      description: 'Esteira de CI/CD em GitHub Actions para auditoria, testes e deploy',
     },
   ];
 }

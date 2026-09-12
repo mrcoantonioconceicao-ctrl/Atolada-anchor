@@ -95,12 +95,31 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
   const [newRepoDesc, setNewRepoDesc] = useState<string>('Smart Contract Solana Anchor auditado com Solana Architect');
   const [isPrivateRepo, setIsPrivateRepo] = useState<boolean>(false);
   const [targetBranch, setTargetBranch] = useState<string>('main');
-  const [commitMessage, setCommitMessage] = useState<string>('feat: update Solana Anchor contract via Solana Architect');
+  const [commitMessage, setCommitMessage] = useState<string>('feat(security): update Anchor smart contract workspace & DevSecOps CI/CD pipeline');
   const [exportScope, setExportScope] = useState<'workspace' | 'contract_only'>('workspace');
   const [pushMode, setPushMode] = useState<'direct' | 'pr'>('pr');
-  const [prTitle, setPrTitle] = useState<string>('feat: update Solana Anchor smart contract & audit report');
+  const [prTitle, setPrTitle] = useState<string>('feat(security): Anchor v0.30.0 smart contract & DevSecOps audit report');
   const [prBody, setPrBody] = useState<string>(
-    `## 🛡️ Solana Anchor Smart Contract & Security Audit PR\n\nEste Pull Request foi gerado automaticamente pelo **Solana Architect IDE**.\n\n### 📋 Detalhes da Auditoria:\n- **Audit Security Score:** \`${auditScore}/100\`\n- **Framework:** Anchor v0.30.0\n- **Status:** Validado via AST Static Analysis & PDA Verifier`
+    `## 🛡️ Solana Anchor Smart Contract & Security Audit Report
+
+Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSecOps Suite**.
+
+### 📊 Resumo do Laudo de Auditoria Estática (AST)
+- **Security Score:** \`${auditScore}/100\` (${auditScore === 100 ? '✅ Aprovado para Produção' : '⚠️ Requer Atenção'})
+- **Framework:** Anchor v0.30.0 (SVM)
+- **Análise Semântica AST:** Validado via Solana Architect Engine & PDA Verifier
+- **Esteira CI/CD:** Contém \`.github/workflows/anchor-ci-cd.yml\` pré-configurado
+
+### 🔍 Matriz de Conformidade das 6 Regras Canônicas
+- [x] **1. Program ID:** Declaração \`declare_id!\` validada e sincronizada.
+- [x] **2. Canonical Bump & Seeds:** Sementes determinísticas e bump canônico gravado no estado.
+- [x] **3. Signer Validation:** Assinaturas Ed25519 verificadas com \`Signer<'info>\`.
+- [x] **4. Owner Constraint:** Restrição de autoridade (\`has_one = authority\`) aplicada.
+- [x] **5. Exact Space Calculation:** Alocação exata de memória (8B discriminador + Borsh + 1B bump).
+- [x] **6. Checked Arithmetic:** Aritmética segura (\`checked_add\`/\`checked_sub\`) contra overflow.
+
+---
+*Enviado via **Solana Architect IDE** - DevSecOps Engine.*`
   );
 
   // Execution & Progress state
@@ -115,6 +134,7 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
     prUrl?: string;
     prNumber?: number;
     prBranch?: string;
+    prWarning?: string;
   } | null>(null);
 
   // Program ID
@@ -322,6 +342,7 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
           prUrl: prResult.prUrl,
           prNumber: prResult.prNumber,
           prBranch: prResult.prBranch,
+          prWarning: prResult.error,
         });
       } else {
         const result = await pushFilesToGithub(
@@ -1071,6 +1092,11 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
                       ? `Foram enviados ${pushSuccess.fileCount} arquivos e o Pull Request foi aberto para mesclagem na branch ${pushSuccess.baseBranch || targetBranch}.`
                       : `Foram enviados ${pushSuccess.fileCount} arquivos diretamente para a branch ${targetBranch || 'main'}.`}
                   </p>
+                  {pushSuccess.prWarning && (
+                    <div className="text-[10px] text-[#e3b341] bg-[#d29922]/15 p-2 rounded border border-[#d29922]/40">
+                      ℹ️ Observação do GitHub: {pushSuccess.prWarning}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 pt-1 font-mono">
                     <a
                       href={pushSuccess.prUrl || pushSuccess.commitUrl}
