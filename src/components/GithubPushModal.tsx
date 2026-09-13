@@ -317,20 +317,29 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
   }
 
   function prepareFilesToPush(): FileToPush[] {
-    const idl = generateAnchorIdl(code, programId);
-    const tsClient = generateTypeScriptClientCode(programId, '2X7m...pda');
+    const modMatch = code.match(/pub\s+mod\s+([a_zA_Z0_9_]+)/);
+    const realModuleName = modMatch && modMatch[1] ? modMatch[1] : 'solana_sandbox_counter';
+
+    const idMatch = code.match(/declare_id!\s*\(\s*["']([^"']+)["']\s*\)/);
+    const realProgramId =
+      idMatch && idMatch[1] && idMatch[1].length >= 32 && !idMatch[1].includes('.')
+        ? idMatch[1]
+        : 'Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS';
+
+    const idl = generateAnchorIdl(code, realProgramId);
+    const tsClient = generateTypeScriptClientCode(realProgramId, '2X7m...pda');
 
     if (exportScope === 'contract_only') {
       return [
         {
-          path: 'programs/solana_sandbox_counter/src/lib.rs',
+          path: `programs/${realModuleName}/src/lib.rs`,
           content: code,
           description: 'Smart Contract Rust Anchor',
         },
       ];
     }
 
-    return generateAnchorWorkspaceFiles(code, programId, auditScore, idl, tsClient);
+    return generateAnchorWorkspaceFiles(code, realProgramId, auditScore, idl, tsClient);
   }
 
   async function handleExecutePush() {
