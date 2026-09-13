@@ -851,18 +851,39 @@ jobs:
           restore-keys: |
             \${{ runner.os }}-anchor-\${{ env.ANCHOR_VERSION }}-solana-\${{ env.SOLANA_VERSION }}-
 
-      - name: ⚙️ Install Solana CLI Suite (\${{ env.SOLANA_VERSION }}) with SSL Fallback
+      - name: ⚙️ Install Solana CLI Suite (\${{ env.SOLANA_VERSION }}) with Loop Retries & SSL Fallback
         run: |
           if ! command -v solana &> /dev/null; then
-            echo "==> Tentando baixar o tarball oficial direto do repositório GitHub para evitar falhas de SSL..."
-            curl -L --retry 5 --retry-delay 5 -o solana-release.tar.bz2 https://github.com/solana-labs/solana/releases/download/v\${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2 || true
+            INSTALL_SUCCESS=false
+            MAX_ATTEMPTS=3
+            ATTEMPT=1
+            
+            while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+              echo "==> Tentativa $ATTEMPT de $MAX_ATTEMPTS para instalar Solana CLI Suite..."
+              
+              # Camada 1: Tarball direto do GitHub Releases (evita timeout/SSL no CDN release.solana.com)
+              if curl -L --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 --retry-max-time 120 -sSf -o solana-release.tar.bz2 https://github.com/solana-labs/solana/releases/download/v\${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2 && [ -s solana-release.tar.bz2 ]; then
+                echo "==> Tarball baixado com sucesso. Extraindo..."
+                mkdir -p \$HOME/.local/share/solana/install/active_release
+                tar -jxf solana-release.tar.bz2 -C \$HOME/.local/share/solana/install/active_release --strip-components=1
+                rm -f solana-release.tar.bz2
+                INSTALL_SUCCESS=true
+                break
+              # Camada 2: Fallback script oficial com TLSv1.2 e retries elevados
+              elif sh -c "$(curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 --retry-max-time 120 -sSfL https://release.solana.com/v\${{ env.SOLANA_VERSION }}/install)"; then
+                echo "==> Script de instalação oficial executado com sucesso."
+                INSTALL_SUCCESS=true
+                break
+              else
+                echo "⚠️ Falha de rede ou SSL na tentativa $ATTEMPT. Aguardando 5s..."
+                sleep 5
+                ATTEMPT=$((ATTEMPT + 1))
+              fi
+            done
 
-            if [ -f "solana-release.tar.bz2" ] && [ -s "solana-release.tar.bz2" ]; then
-              mkdir -p \$HOME/.local/share/solana/install/active_release
-              tar -jxf solana-release.tar.bz2 -C \$HOME/.local/share/solana/install/active_release --strip-components=1
-            else
-              echo "⚠️ Fallback para o script de instalação oficial com TLSv1.2..."
-              sh -c "$(curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 -sSfL https://release.solana.com/v\${{ env.SOLANA_VERSION }}/install)"
+            if [ "$INSTALL_SUCCESS" != "true" ]; then
+              echo "❌ Erro Fatal: Não foi possível baixar e instalar a Solana CLI após $MAX_ATTEMPTS tentativas."
+              exit 1
             fi
           fi
 
@@ -873,7 +894,7 @@ jobs:
           export PATH="\$HOME/.local/share/solana/install/active_release/bin:\$PATH"
 
           if ! command -v solana &> /dev/null; then
-            echo "❌ Erro Fatal: O executável 'solana' não foi encontrado no PATH."
+            echo "❌ Erro Fatal: O executável 'solana' não foi encontrado no PATH após a instalação."
             exit 1
           fi
           echo "✅ Solana CLI instalada e validada com sucesso:"
@@ -958,18 +979,39 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Solana CLI Suite (\${{ env.SOLANA_VERSION }}) with SSL Fallback
+      - name: ⚙️ Setup Solana CLI Suite (\${{ env.SOLANA_VERSION }}) with Loop Retries & SSL Fallback
         run: |
           if ! command -v solana &> /dev/null; then
-            echo "==> Tentando baixar o tarball oficial direto do repositório GitHub para evitar falhas de SSL..."
-            curl -L --retry 5 --retry-delay 5 -o solana-release.tar.bz2 https://github.com/solana-labs/solana/releases/download/v\${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2 || true
+            INSTALL_SUCCESS=false
+            MAX_ATTEMPTS=3
+            ATTEMPT=1
+            
+            while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+              echo "==> Tentativa $ATTEMPT de $MAX_ATTEMPTS para configurar Solana CLI Suite no deploy..."
+              
+              # Camada 1: Tarball direto do GitHub Releases (evita timeout/SSL no CDN release.solana.com)
+              if curl -L --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 --retry-max-time 120 -sSf -o solana-release.tar.bz2 https://github.com/solana-labs/solana/releases/download/v\${{ env.SOLANA_VERSION }}/solana-release-x86_64-unknown-linux-gnu.tar.bz2 && [ -s solana-release.tar.bz2 ]; then
+                echo "==> Tarball baixado com sucesso. Extraindo..."
+                mkdir -p \$HOME/.local/share/solana/install/active_release
+                tar -jxf solana-release.tar.bz2 -C \$HOME/.local/share/solana/install/active_release --strip-components=1
+                rm -f solana-release.tar.bz2
+                INSTALL_SUCCESS=true
+                break
+              # Camada 2: Fallback script oficial com TLSv1.2 e retries elevados
+              elif sh -c "$(curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 --retry-max-time 120 -sSfL https://release.solana.com/v\${{ env.SOLANA_VERSION }}/install)"; then
+                echo "==> Script de instalação oficial executado com sucesso."
+                INSTALL_SUCCESS=true
+                break
+              else
+                echo "⚠️ Falha de rede ou SSL na tentativa $ATTEMPT. Aguardando 5s..."
+                sleep 5
+                ATTEMPT=$((ATTEMPT + 1))
+              fi
+            done
 
-            if [ -f "solana-release.tar.bz2" ] && [ -s "solana-release.tar.bz2" ]; then
-              mkdir -p \$HOME/.local/share/solana/install/active_release
-              tar -jxf solana-release.tar.bz2 -C \$HOME/.local/share/solana/install/active_release --strip-components=1
-            else
-              echo "⚠️ Fallback para o script de instalação oficial com TLSv1.2..."
-              sh -c "$(curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 5 -sSfL https://release.solana.com/v\${{ env.SOLANA_VERSION }}/install)"
+            if [ "$INSTALL_SUCCESS" != "true" ]; then
+              echo "❌ Erro Fatal: Não foi possível baixar e instalar a Solana CLI após $MAX_ATTEMPTS tentativas no job de deploy."
+              exit 1
             fi
           fi
 
@@ -980,7 +1022,7 @@ jobs:
           export PATH="\$HOME/.local/share/solana/install/active_release/bin:\$PATH"
 
           if ! command -v solana &> /dev/null; then
-            echo "❌ Erro Fatal: O executável 'solana' não foi encontrado no PATH."
+            echo "❌ Erro Fatal: O executável 'solana' não foi encontrado no PATH após a instalação."
             exit 1
           fi
           echo "✅ Solana CLI instalada e validada com sucesso:"

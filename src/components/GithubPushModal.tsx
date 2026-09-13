@@ -79,7 +79,7 @@ export const GithubPushModal: React.FC<GithubPushModalProps> = ({
   // Authenticated Export / Push State (PAT Required)
   // -------------------------------------------------------------
   const [token, setToken] = useState<string>(() => {
-    return localStorage.getItem('solana_architect_github_token') || '';
+    return localStorage.getItem('solana_architect_github_token') || localStorage.getItem('github_personal_access_token') || '';
   });
   const [showTokenInput, setShowTokenInput] = useState<boolean>(true);
   const [isVerifyingToken, setIsVerifyingToken] = useState<boolean>(false);
@@ -182,12 +182,22 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
     }
   }, [isOpen, initialTab]);
 
-  // Automatically verify token if present on load or open
+  // Automatically verify saved token on load or open
   useEffect(() => {
-    if (isOpen && token && !githubUser) {
-      handleVerifyToken(token);
+    const savedToken = token || localStorage.getItem('solana_architect_github_token') || localStorage.getItem('github_personal_access_token') || '';
+    if (isOpen && savedToken && !githubUser && !isVerifyingToken) {
+      if (!token) setToken(savedToken);
+      handleVerifyToken(savedToken);
     }
   }, [isOpen]);
+
+  // Sync token state to persistent localStorage
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('solana_architect_github_token', token);
+      localStorage.setItem('github_personal_access_token', token);
+    }
+  }, [token]);
 
   if (!isOpen) return null;
 
@@ -262,18 +272,22 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
   // Handlers for Authenticated Push
   // -------------------------------------------------------------
   async function handleVerifyToken(tokenToVerify: string) {
+    const cleanToken = tokenToVerify.trim();
+    if (!cleanToken) return;
     setIsVerifyingToken(true);
     setTokenError(null);
     try {
-      const user = await verifyGithubToken(tokenToVerify);
+      const user = await verifyGithubToken(cleanToken);
       setGithubUser(user);
-      localStorage.setItem('solana_architect_github_token', tokenToVerify);
+      setToken(cleanToken);
+      localStorage.setItem('solana_architect_github_token', cleanToken);
+      localStorage.setItem('github_personal_access_token', cleanToken);
       setShowTokenInput(false);
 
       // Fetch user repos
       setIsLoadingRepos(true);
       try {
-        const repos = await getUserRepositories(tokenToVerify);
+        const repos = await getUserRepositories(cleanToken);
         setUserRepos(repos);
         if (repos.length > 0) {
           setSelectedRepo(repos[0].name);
@@ -293,6 +307,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
 
   function handleDisconnectAccount() {
     localStorage.removeItem('solana_architect_github_token');
+    localStorage.removeItem('github_personal_access_token');
     setGithubUser(null);
     setToken('');
     setShowTokenInput(true);
@@ -319,6 +334,12 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
   }
 
   async function handleExecutePush() {
+    const activeToken = token.trim() || localStorage.getItem('solana_architect_github_token') || localStorage.getItem('github_personal_access_token') || '';
+    if (!activeToken) {
+      setPushError('Por favor, informe e autentique com seu Personal Access Token do GitHub primeiro.');
+      return;
+    }
+
     if (!githubUser) {
       setPushError('Por favor, autentique com seu Personal Access Token do GitHub primeiro.');
       return;
@@ -339,7 +360,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
         }
         setPushProgress({ current: 0, total: 1, file: 'Criando novo repositório no GitHub...' });
         const createdRepo = await createNewRepository(
-          token,
+          activeToken,
           newRepoName,
           newRepoDesc,
           isPrivateRepo
@@ -357,7 +378,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
       // 3. Execute Direct Push or Create Pull Request
       if (pushMode === 'pr') {
         const prResult = await createGithubPullRequest(
-          token,
+          activeToken,
           githubUser.login,
           targetRepoName,
           branchName,
@@ -382,7 +403,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
         });
       } else {
         const result = await pushFilesToGithub(
-          token,
+          activeToken,
           githubUser.login,
           targetRepoName,
           branchName,
@@ -477,14 +498,14 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
               type="button"
               onClick={() => handleDownloadCicdWorkflow('anchor-ci-cd.yml')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono bg-[#238636] hover:bg-[#2ea043] text-white font-semibold border border-[#2ea043] rounded transition-all shadow-sm"
-              title="Baixar pipeline CI/CD resiliente: .github/workflows/anchor-ci-cd.yml"
+              title="Baixar esteira resiliente de CI/CD: .github/workflows/anchor-ci-cd.yml"
             >
               {isDownloadedCicd ? (
                 <Check className="w-3.5 h-3.5 text-white" />
               ) : (
                 <Download className="w-3.5 h-3.5 text-white" />
               )}
-              <span>{isDownloadedCicd ? 'anchor-ci-cd.yml Baixado!' : 'Baixar anchor-ci-cd.yml'}</span>
+              <span>{isDownloadedCicd ? 'CI/CD Resiliente Baixado!' : 'Baixar CI/CD Resiliente'}</span>
             </button>
           </div>
         </div>
@@ -730,14 +751,14 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
                     type="button"
                     onClick={() => handleDownloadCicdWorkflow('anchor-ci-cd.yml')}
                     className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded text-xs transition-colors shrink-0 shadow-sm"
-                    title="Baixar arquivo .github/workflows/anchor-ci-cd.yml"
+                    title="Baixar esteira resiliente de CI/CD: .github/workflows/anchor-ci-cd.yml"
                   >
                     {isDownloadedCicd ? (
                       <Check className="w-3.5 h-3.5 text-white" />
                     ) : (
                       <Download className="w-3.5 h-3.5" />
                     )}
-                    <span>{isDownloadedCicd ? 'anchor-ci-cd.yml Baixado!' : 'Baixar anchor-ci-cd.yml'}</span>
+                    <span>{isDownloadedCicd ? 'CI/CD Resiliente Baixado!' : 'Baixar CI/CD Resiliente'}</span>
                   </button>
                 </div>
               </div>
@@ -819,8 +840,8 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
                         <ExternalLink className="w-3 h-3" />
                       </a>
 
-                      <span className="text-[#8b949e] text-[10px] font-mono">
-                        🔒 Salvo localmente apenas no seu navegador.
+                      <span className="text-[#7ee787] text-[10px] font-mono flex items-center gap-1">
+                        🔒 LocalStorage Persistente: Token salvo localmente e reaproveitado para 'Push to GitHub'
                       </span>
                     </div>
 
@@ -1164,14 +1185,14 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
                         type="button"
                         onClick={() => handleDownloadCicdWorkflow('anchor-ci-cd.yml')}
                         className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded text-xs transition-colors shrink-0 shadow-sm"
-                        title="Baixar arquivo .github/workflows/anchor-ci-cd.yml"
+                        title="Baixar esteira resiliente de CI/CD: .github/workflows/anchor-ci-cd.yml"
                       >
                         {isDownloadedCicd ? (
                           <Check className="w-3.5 h-3.5 text-white" />
                         ) : (
                           <Download className="w-3.5 h-3.5" />
                         )}
-                        <span>{isDownloadedCicd ? 'anchor-ci-cd.yml Baixado!' : 'Baixar anchor-ci-cd.yml'}</span>
+                        <span>{isDownloadedCicd ? 'CI/CD Resiliente Baixado!' : 'Baixar CI/CD Resiliente'}</span>
                       </button>
                     </div>
                   </div>
