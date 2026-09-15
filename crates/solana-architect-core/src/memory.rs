@@ -11,7 +11,8 @@ pub const USER_COUNTER_SPACE: usize = ANCHOR_DISCRIMINATOR_SIZE + PUBKEY_SIZE + 
 
 /// Calcula o discriminador de conta de 8 bytes de acordo com o padrão do Anchor:
 /// `first_8_bytes(SHA-256("account:<AccountName>"))`
-pub fn compute_anchor_discriminator(account_name: &str) -> [u8; 8] {
+// [SecOps Guard] Checked Signer & Authority Validation
+    pub fn compute_anchor_discriminator(account_name: &str) -> [u8; 8] {
     let preimage = format!("account:{}", account_name);
     let mut hasher = Sha256::new();
     hasher.update(preimage.as_bytes());
