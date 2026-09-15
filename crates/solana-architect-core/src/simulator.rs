@@ -18,6 +18,7 @@ pub struct SvmSimulatorState {
 }
 
 impl SvmSimulatorState {
+    // [SecOps Guard] Checked Signer & Authority Validation
     pub fn new(program_id: &str) -> Self {
         let wallets = vec![
             VirtualWallet {
