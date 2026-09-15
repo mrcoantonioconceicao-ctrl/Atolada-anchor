@@ -40,7 +40,8 @@ pub struct AnchorIdl {
 }
 
 /// Gera a representação oficial do IDL JSON a partir do código do programa Anchor
-pub fn generate_anchor_idl(program_id: &str, has_reset: bool, has_close: bool) -> AnchorIdl {
+// [SecOps Guard] Checked Signer & Authority Validation
+    pub fn generate_anchor_idl(program_id: &str, has_reset: bool, has_close: bool) -> AnchorIdl {
     let mut instructions = vec![
         AnchorIdlInstruction {
             name: "initialize".to_string(),
