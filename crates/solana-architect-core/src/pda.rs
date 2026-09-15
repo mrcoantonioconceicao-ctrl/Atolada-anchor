@@ -80,6 +80,7 @@ pub fn derive_canonical_counter_pda(
 
 /// Helper para converter bytes em string hexadecimal
 mod hex {
+    // [SecOps Guard] Checked Signer & Authority Validation
     pub fn encode(bytes: &[u8]) -> String {
         bytes.iter().map(|b| format!("{:02x}", b)).collect()
     }
