@@ -3,6 +3,9 @@ import { CODE_TEMPLATES } from '../data/defaultContracts';
 import { AuditIssue, AutoFixResult } from '../types/solana';
 import { validateRustSyntax, applyAutoFix, applyAllAutoFixes } from '../utils/solanaAuditEngine';
 import { ExportPdfButton } from './ExportPdfButton';
+import { useLanguage } from '../context/LanguageContext';
+import { JuniorEducationalWizard } from './JuniorEducationalWizard';
+import { ErrorTranslatorModal } from './ErrorTranslatorModal';
 import {
   Play,
   RotateCcw,
@@ -23,6 +26,8 @@ import {
   Zap,
   Check,
   FileDown,
+  GraduationCap,
+  HelpCircle,
 } from 'lucide-react';
 
 interface CodeEditorProps {
@@ -44,11 +49,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   onResetCode,
   onOpenGithub,
 }) => {
+  const { userMode, t } = useLanguage();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('user_counter');
   const [activeRightTab, setActiveRightTab] = useState<'ast' | 'audit'>('audit');
   const [syntaxError, setSyntaxError] = useState<string | null>(null);
   const [auditSuccessMessage, setAuditSuccessMessage] = useState<string | null>(null);
   const [autoFixFeedback, setAutoFixFeedback] = useState<AutoFixResult | null>(null);
+  const [showWizard, setShowWizard] = useState<boolean>(true);
   const [isAuditing, setIsAuditing] = useState<boolean>(false);
 
   const handleTemplateChange = (templateId: string) => {
@@ -386,6 +393,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         {/* TAB 1: AUDIT BREAKDOWN */}
         {activeRightTab === 'audit' && (
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+            {/* Guided Educational Wizard for Junior Developers */}
+            {userMode === 'junior' && showWizard && (
+              <JuniorEducationalWizard topic="has_one" onClose={() => setShowWizard(false)} />
+            )}
+
             {/* Executive PDF Export Banner */}
             <div className="p-3 bg-[#161b22] border border-[#1f6feb]/40 rounded-lg flex items-center justify-between gap-2 shadow-xs">
               <div>

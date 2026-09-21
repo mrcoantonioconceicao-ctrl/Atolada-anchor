@@ -21,6 +21,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { AuditIssue } from '../types/solana';
 
 interface NavbarProps {
@@ -47,6 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenTour,
 }) => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const criticalIssues = auditIssues.filter((i) => i.severity === 'critical');
@@ -71,43 +73,43 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems = [
     {
       id: 'editor' as const,
-      label: 'IDE Rust & Auditoria',
-      description: 'Editor AST, Análise Estática & Auto-Fix',
+      label: t('nav.editor', 'IDE Rust & Auditoria'),
+      description: t('nav.editor.desc', 'Editor AST, Análise Estática & Auto-Fix'),
       icon: Code2,
       iconColor: 'text-[#d2a8ff]',
     },
     {
       id: 'pda' as const,
-      label: 'Visualizador de PDA',
-      description: 'Seeds, Bumps Canônicos & Derivação',
+      label: t('nav.pda', 'Visualizador de PDA'),
+      description: t('nav.pda.desc', 'Seeds, Bumps Canônicos & Derivação'),
       icon: ShieldCheck,
       iconColor: 'text-[#58a6ff]',
     },
     {
       id: 'simulator' as const,
-      label: 'Simulador de Execução',
-      description: 'Testes de Instruções & Signers',
+      label: t('nav.simulator', 'Simulador de Execução'),
+      description: t('nav.simulator.desc', 'Testes de Instruções & Signers'),
       icon: Terminal,
       iconColor: 'text-[#7ee787]',
     },
     {
       id: 'sdk' as const,
-      label: 'IDL & SDK Client',
-      description: 'TypeScript SDK & Schema JSON',
+      label: t('nav.sdk', 'IDL & SDK Client'),
+      description: t('nav.sdk.desc', 'TypeScript SDK & Schema JSON'),
       icon: FileCode,
       iconColor: 'text-[#ffa657]',
     },
     {
       id: 'rust_engine' as const,
-      label: 'Rust Core Engine',
-      description: 'Compilador Virtual BPF & LLVM',
+      label: t('nav.rust_engine', 'Rust Core Engine'),
+      description: t('nav.rust_engine.desc', 'Compilador Virtual BPF & LLVM'),
       icon: Cpu,
       iconColor: 'text-[#58a6ff]',
     },
     {
       id: 'guide' as const,
-      label: 'Guia de Segurança',
-      description: 'Top 10 Vulnerabilidades Solana',
+      label: t('nav.guide', 'Guia de Segurança'),
+      description: t('nav.guide.desc', 'Top 10 Vulnerabilidades Solana'),
       icon: BookOpen,
       iconColor: 'text-[#a5d6ff]',
     },
@@ -175,7 +177,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-[#7ee787] shrink-0" />
               )}
               <span className="text-[11px] font-bold uppercase tracking-wider font-mono">
-                Auditoria de Segurança
+                {t('nav.audit_score', 'Auditoria de Segurança')}
               </span>
             </div>
             <span className="font-mono font-black text-sm tracking-tight">
@@ -188,13 +190,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               {criticalCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-[#f85149]/30 text-[#ff7b72] rounded border border-[#f85149]/50 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#f85149]" />
-                  {criticalCount} {criticalCount === 1 ? 'Crítica' : 'Críticas'}
+                  {criticalCount} {criticalCount === 1 ? t('nav.critical', 'Crítica') : t('nav.criticals', 'Críticas')}
                 </span>
               )}
               {highCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold bg-[#d29922]/30 text-[#f0883e] rounded border border-[#d29922]/50 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#f0883e]" />
-                  {highCount} {highCount === 1 ? 'Alta' : 'Altas'}
+                  {highCount} {highCount === 1 ? t('nav.high', 'Alta') : t('nav.highs', 'Altas')}
                 </span>
               )}
             </div>

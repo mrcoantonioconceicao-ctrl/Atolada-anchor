@@ -3,6 +3,7 @@ import { USER_INITIAL_COUNTER_CODE } from './data/defaultContracts';
 import { runAnchorSecurityAudit } from './utils/solanaUtils';
 import { fetchPublicGithubRepository } from './utils/githubService';
 import { Navbar } from './components/Navbar';
+import { HeaderBar } from './components/HeaderBar';
 import { CodeEditor } from './components/CodeEditor';
 import { PdaVisualizer } from './components/PdaVisualizer';
 import { ExecutionSandbox } from './components/ExecutionSandbox';
@@ -14,6 +15,7 @@ import { GithubPushModal } from './components/GithubPushModal';
 import { CloudProjectsModal } from './components/CloudProjectsModal';
 import { SystemTourModal } from './components/SystemTourModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { recordAuditToCloud } from './firebase';
 import { Globe, CheckCircle2, AlertCircle, Loader2, X } from 'lucide-react';
 
@@ -72,6 +74,9 @@ function MainApp() {
     return runAnchorSecurityAudit(code);
   }, [code]);
 
+  const criticalIssues = auditResult.issues.filter((i) => i.severity === 'critical');
+  const highIssues = auditResult.issues.filter((i) => i.severity === 'high');
+
   const handleRunAudit = () => {
     setActiveTab('editor');
     // Save audit record to Cloud Firestore if logged in
@@ -116,77 +121,91 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex flex-col lg:flex-row font-sans selection:bg-[#1f6feb] selection:text-white antialiased">
-      {/* Left Navigation & Tools Sidebar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex flex-col font-sans selection:bg-[#1f6feb] selection:text-white antialiased">
+      {/* Global Trilingual Top Header Bar */}
+      <HeaderBar
         auditScore={auditResult.score}
-        auditIssues={auditResult.issues}
-        onOpenAi={() => setIsAiOpen(true)}
-        onRunAudit={handleRunAudit}
-        onOpenGithub={(tab?: 'import' | 'export') => handleOpenGithubModal(tab || 'import')}
+        criticalCount={criticalIssues.length}
+        highCount={highIssues.length}
         onOpenCloud={() => setIsCloudOpen(true)}
+        onOpenGithub={(tab?: 'import' | 'export') => handleOpenGithubModal(tab || 'import')}
         onOpenTour={() => setIsTourOpen(true)}
+        onRunAudit={handleRunAudit}
       />
 
-      {/* Main Workspace Area (Right side) */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
-        {/* URL Import Notification Toast / Banner */}
-        {urlImportMessage && (
-          <div
-            className={`mx-4 mt-3 p-2.5 rounded-md border text-xs font-mono flex items-center justify-between shadow-lg animate-fadeIn shrink-0 z-20 ${
-              urlImportMessage.type === 'success'
-                ? 'bg-[#238636]/20 border-[#238636] text-[#7ee787]'
-                : urlImportMessage.type === 'error'
-                ? 'bg-[#f85149]/20 border-[#f85149] text-[#ff7b72]'
-                : 'bg-[#1f6feb]/20 border-[#1f6feb] text-[#58a6ff]'
-            }`}
-          >
-            <div className="flex items-center gap-2 truncate">
-              {urlImportMessage.type === 'loading' ? (
-                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-              ) : urlImportMessage.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-[#7ee787] shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-[#ff7b72] shrink-0" />
-              )}
-              <span className="truncate">{urlImportMessage.text}</span>
-            </div>
+      {/* Main Body: Left Sidebar + Right Workspace */}
+      <div className="flex-1 flex flex-col lg:flex-row min-w-0 min-h-0">
+        {/* Left Navigation & Tools Sidebar */}
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          auditScore={auditResult.score}
+          auditIssues={auditResult.issues}
+          onOpenAi={() => setIsAiOpen(true)}
+          onRunAudit={handleRunAudit}
+          onOpenGithub={(tab?: 'import' | 'export') => handleOpenGithubModal(tab || 'import')}
+          onOpenCloud={() => setIsCloudOpen(true)}
+          onOpenTour={() => setIsTourOpen(true)}
+        />
 
-            <button
-              onClick={() => setUrlImportMessage(null)}
-              className="p-1 hover:bg-black/30 rounded text-[#8b949e] hover:text-white transition-colors shrink-0 ml-2"
+        {/* Main Workspace Area (Right side) */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+          {/* URL Import Notification Toast / Banner */}
+          {urlImportMessage && (
+            <div
+              className={`mx-4 mt-3 p-2.5 rounded-md border text-xs font-mono flex items-center justify-between shadow-lg animate-fadeIn shrink-0 z-20 ${
+                urlImportMessage.type === 'success'
+                  ? 'bg-[#238636]/20 border-[#238636] text-[#7ee787]'
+                  : urlImportMessage.type === 'error'
+                  ? 'bg-[#f85149]/20 border-[#f85149] text-[#ff7b72]'
+                  : 'bg-[#1f6feb]/20 border-[#1f6feb] text-[#58a6ff]'
+              }`}
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+              <div className="flex items-center gap-2 truncate">
+                {urlImportMessage.type === 'loading' ? (
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                ) : urlImportMessage.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-[#7ee787] shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-[#ff7b72] shrink-0" />
+                )}
+                <span className="truncate">{urlImportMessage.text}</span>
+              </div>
 
-        {/* Main Content View Switcher */}
-        <main className="flex-1 relative flex flex-col min-w-0">
-          {activeTab === 'editor' && (
-            <CodeEditor
-              code={code}
-              setCode={setCode}
-              auditIssues={auditResult.issues}
-              auditScore={auditResult.score}
-              onRunAudit={handleRunAudit}
-              onResetCode={handleResetCode}
-              onOpenGithub={(tab?: 'import' | 'export') => handleOpenGithubModal(tab || 'import')}
-            />
+              <button
+                onClick={() => setUrlImportMessage(null)}
+                className="p-1 hover:bg-black/30 rounded text-[#8b949e] hover:text-white transition-colors shrink-0 ml-2"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           )}
 
-          {activeTab === 'pda' && <PdaVisualizer />}
+          {/* Main Content View Switcher */}
+          <main className="flex-1 relative flex flex-col min-w-0">
+            {activeTab === 'editor' && (
+              <CodeEditor
+                code={code}
+                setCode={setCode}
+                auditIssues={auditResult.issues}
+                auditScore={auditResult.score}
+                onRunAudit={handleRunAudit}
+                onResetCode={handleResetCode}
+                onOpenGithub={(tab?: 'import' | 'export') => handleOpenGithubModal(tab || 'import')}
+              />
+            )}
 
-          {activeTab === 'simulator' && <ExecutionSandbox code={code} />}
+            {activeTab === 'pda' && <PdaVisualizer />}
 
-          {activeTab === 'sdk' && <SdkAndIdlViewer code={code} onOpenGithub={() => handleOpenGithubModal('export')} />}
+            {activeTab === 'simulator' && <ExecutionSandbox code={code} />}
 
-          {activeTab === 'rust_engine' && <RustEngineViewer />}
+            {activeTab === 'sdk' && <SdkAndIdlViewer code={code} onOpenGithub={() => handleOpenGithubModal('export')} />}
 
-          {activeTab === 'guide' && <SecurityGuide />}
-        </main>
+            {activeTab === 'rust_engine' && <RustEngineViewer />}
+
+            {activeTab === 'guide' && <SecurityGuide />}
+          </main>
+        </div>
       </div>
 
       {/* Interactive System Tour and Tutorial Modal */}
@@ -232,7 +251,10 @@ function MainApp() {
 export default function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <LanguageProvider>
+        <MainApp />
+      </LanguageProvider>
     </AuthProvider>
   );
 }
+

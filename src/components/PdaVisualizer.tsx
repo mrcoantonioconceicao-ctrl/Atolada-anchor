@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { deriveCounterPda } from '../utils/solanaUtils';
-import { ShieldCheck, Key, Hash, Layers, CheckCircle2, Copy, RefreshCw, Cpu, HelpCircle, ArrowRight } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { JuniorEducationalWizard } from './JuniorEducationalWizard';
+import { ShieldCheck, Key, Hash, Layers, CheckCircle2, Copy, RefreshCw, Cpu, HelpCircle, ArrowRight, GraduationCap } from 'lucide-react';
 
 export const PdaVisualizer: React.FC = () => {
+  const { userMode, t } = useLanguage();
   const [programId, setProgramId] = useState<string>('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
   const [authorityKey, setAuthorityKey] = useState<string>('5x39H1K7M2p4Q8v6L9x2Y1Z3W4V5U6T7S8R9Q1P2O3N4');
   const [seedPrefix, setSeedPrefix] = useState<string>('counter');
   const [copied, setCopied] = useState<boolean>(false);
+  const [showWizard, setShowWizard] = useState<boolean>(true);
 
   // Derive PDA dynamically
   const pdaResult = deriveCounterPda(programId, authorityKey, seedPrefix);
@@ -30,8 +34,13 @@ export const PdaVisualizer: React.FC = () => {
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#58a6ff]" />
               <h1 className="text-lg sm:text-xl font-bold tracking-tight text-[#c9d1d9]">
-                Engine de Derivação PDA (Program Derived Address) Solana
+                {t('nav.pda', 'Visualizador de PDA (Program Derived Address)')}
               </h1>
+              {userMode === 'junior' && (
+                <span className="px-2 py-0.5 text-[10px] font-mono bg-[#1f6feb]/20 text-[#58a6ff] rounded border border-[#1f6feb]/40 flex items-center gap-1">
+                  <GraduationCap className="w-3 h-3" /> Modo Assistido
+                </span>
+              )}
             </div>
             <p className="text-xs text-[#8b949e] mt-0.5">
               Visualize a derivação determinística de endereços fora da curva usando IDs de programa, seeds e busca do bump canônico.
@@ -50,6 +59,11 @@ export const PdaVisualizer: React.FC = () => {
             <span>Restaurar Padrões</span>
           </button>
         </div>
+
+        {/* Guided Educational Wizard for Junior Developers */}
+        {userMode === 'junior' && showWizard && (
+          <JuniorEducationalWizard topic="pda" onClose={() => setShowWizard(false)} />
+        )}
 
         {/* INPUTS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { VirtualWallet, UserCounterAccountState, TxLogEntry } from '../types/solana';
 import { deriveCounterPda, calculateAnchorDiscriminator, calculateRentLamports } from '../utils/solanaUtils';
 import { RustUnitTestGenerator } from './RustUnitTestGenerator';
-import { Terminal, Play, ShieldAlert, Cpu, Database, Wallet, Layers, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowRight, Code2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
+import { JuniorEducationalWizard } from './JuniorEducationalWizard';
+import { ErrorTranslatorModal } from './ErrorTranslatorModal';
+import { Terminal, Play, ShieldAlert, Cpu, Database, Wallet, Layers, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowRight, Code2, GraduationCap, Sparkles, HelpCircle } from 'lucide-react';
 
 interface ExecutionSandboxProps {
   code: string;
@@ -33,10 +36,13 @@ const INITIAL_WALLETS: VirtualWallet[] = [
 ];
 
 export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
+  const { userMode, t } = useLanguage();
   const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'unit_tests'>('sandbox');
   const [wallets, setWallets] = useState<VirtualWallet[]>(INITIAL_WALLETS);
   const [activeWalletId, setActiveWalletId] = useState<string>('alice');
   const [programId] = useState<string>('Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS');
+  const [showWizard, setShowWizard] = useState<boolean>(true);
+  const [selectedErrorForDecoder, setSelectedErrorForDecoder] = useState<string | null>(null);
 
   // Account State for Alice's Counter PDA
   const alicePda = deriveCounterPda(programId, INITIAL_WALLETS[0].pubkey, 'counter');
@@ -610,8 +616,14 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
                     ))}
 
                     {tx.errorMessage && (
-                      <div className="p-1.5 text-[11px] bg-[#f85149]/20 border border-[#f85149]/50 text-[#ff7b72] rounded font-semibold mt-1">
-                        ⚠️ {tx.errorMessage}
+                      <div className="p-2 text-[11px] bg-[#f85149]/20 border border-[#f85149]/50 text-[#ff7b72] rounded font-semibold mt-1 flex items-center justify-between gap-2">
+                        <span>⚠️ {tx.errorMessage}</span>
+                        <button
+                          onClick={() => setSelectedErrorForDecoder(tx.errorMessage || tx.logs.join('\n'))}
+                          className="px-2 py-0.5 bg-[#f85149] hover:bg-[#da3633] text-white text-[10px] font-bold rounded shrink-0 transition-colors"
+                        >
+                          Traduzir & Corrigir
+                        </button>
                       </div>
                     )}
                   </div>
@@ -623,6 +635,13 @@ export const ExecutionSandbox: React.FC<ExecutionSandboxProps> = ({ code }) => {
         </>
         )}
       </div>
+
+      {/* Error Translator Modal */}
+      <ErrorTranslatorModal
+        isOpen={!!selectedErrorForDecoder}
+        onClose={() => setSelectedErrorForDecoder(null)}
+        rawErrorText={selectedErrorForDecoder || ''}
+      />
     </div>
   );
 };

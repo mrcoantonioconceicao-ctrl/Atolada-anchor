@@ -1,19 +1,32 @@
 # Solana Architect & Anchor Security Studio
 
 ![Solana Anchor Security Auditor](https://img.shields.io/badge/Solana-Anchor%20v0.30.0+-purple?style=for-the-badge&logo=solana)
+![Trilingual](https://img.shields.io/badge/Languages-PT%20|%20EN%20|%20ES-58a6ff?style=for-the-badge)
+![Junior & Advanced Modes](https://img.shields.io/badge/UX-Dual%20Mode%20DX-7ee787?style=for-the-badge)
 ![Rust](https://img.shields.io/badge/Rust-2021%20Edition-DEA584?style=for-the-badge&logo=rust)
 ![DevSecOps](https://img.shields.io/badge/DevSecOps-Automated%20CI%2FCD-00C853?style=for-the-badge&logo=githubactions)
 ![React](https://img.shields.io/badge/React-19.x-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss)
-![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%26%20Auth-FFCA28?style=for-the-badge&logo=firebase)
 
-O **Solana Architect** é uma plataforma integrada de engenharia de software, auditoria estática AST e automação DevSecOps para smart contracts da **Solana (Anchor v0.30.0+)**. Equipada com um núcleo nativo em **Rust (`crates/solana-architect-core`)**, motor de **Correção Automática (Auto-Fix)** em 1 clique, automação de **Pull Requests no GitHub com Laudo de Segurança**, esteira de **CI/CD em GitHub Actions**, simulador de máquina de estados SVM on-chain (localnet), gerador de testes unitários (`solana-program-test`), e exportação de **Laudos Executivos em PDF**.
+O **Solana Architect** é uma plataforma integrada de engenharia de software, auditoria estática AST e automação DevSecOps para smart contracts da **Solana (Anchor v0.30.0+)**. Equipada com um núcleo nativo em **Rust (`crates/solana-architect-core`)**, suporte **Trilíngue (PT, EN, ES)**, sistema de **Modos Duplos (Júnior / Guiado vs Engenheiro / Avançado)**, motor de **Correção Automática (Auto-Fix)** em 1 clique, **Tradutor Amigável de Erros da Solana**, automação de **Pull Requests no GitHub com Laudo de Segurança**, esteira de **CI/CD em GitHub Actions**, simulador de máquina de estados SVM on-chain (localnet), gerador de testes unitários (`solana-program-test`), e exportação de **Laudos Executivos em PDF**.
 
 ---
 
-## 🛡️ As 6 Regras Canônicas de Auditoria Estática de Segurança
+## 🌟 Principais Recursos & Inovações DX/DevSecOps
 
+### 🌍 1. Suporte Trilíngue Global (PT-BR, EN-US, ES)
+- Seletor de idioma integrado com salvamento automático no `localStorage`.
+- Interface, laudos, dicas de segurança e wizards totalmente traduzidos em **Português**, **Inglês** e **Espanhol**.
+
+### 🎓 2. Sistema de Modos Duplos (Júnior vs. Engenheiro Avançado)
+- **Modo Júnior (Guiado)**: Ativa assistentes visuais passo a passo (`JuniorEducationalWizard`), dicas interativas sobre PDAs, `has_one` e rent exemption, com linguagem acessível e foco em aprendizado.
+- **Modo Avançado (Engenheiro Sênior)**: Libera acesso completo a layouts de memória de 49 bytes, inspeção raw de registradores BPF, discriminadores Anchor e geradores de cliente TypeScript.
+
+### 🔎 3. Tradutor Amigável de Erros da Solana (`ErrorTranslatorModal`)
+- Decodifica erros crípticos do Anchor e SVM (ex: `ConstraintHasOne`, `0x7d1`, `AccountNotInitialized`, erros de `Base58`, `Overflow/Underflow`).
+- Apresenta explicação clara da causa raiz em linguagem humana com sugestões práticas e botão de **"Aplicar Correção em 1-Clique"**.
+
+### 🛡️ 4. As 6 Regras Canônicas de Auditoria Estática AST
 O motor de auditoria AST valida obrigatoriamente 6 regras de segurança fundamentais antes de autorizar a implantação:
 
 1. **Validação do Program ID**: Declaração explícita e válida do `declare_id!("...")` sincronizado com o cluster de destino.
