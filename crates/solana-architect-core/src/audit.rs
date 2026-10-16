@@ -37,7 +37,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
     let has_bump_cache = source_code.contains("counter.bump = ctx.bumps.counter")
         || source_code.contains("bump = counter.bump");
     let has_checked_math = source_code.contains("checked_add") || source_code.contains("checked_sub");
-    let has_space_exact = source_code.contains("space = 8 + 32 + 8 + 1");
+    let has_space_exact = source_code.contains("space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()");
     let has_signer_struct = source_code.contains("pub authority: Signer<'info>")
         || source_code.contains("Signer<'info>");
     let has_close_instruction = source_code.contains("pub fn close") || source_code.contains("close = authority");
@@ -47,7 +47,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
     // =========================================================================
     if has_has_one {
         issues.push(AuditIssue {
-            id: "access-control-has-one".to_string(),
+            id: "access.checked_sub(control).unwrap()-has.checked_sub(one).unwrap()".to_string(),
             severity: Severity::Pass,
             category: AuditCategory::AccessControl.as_str().to_string(),
             title: "Vinculação de Assinante e Autoridade (`has_one = authority`) Verificada".to_string(),
@@ -59,7 +59,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
         });
     } else {
         issues.push(AuditIssue {
-            id: "access-control-missing-has-one".to_string(),
+            id: "access.checked_sub(control).unwrap()-missing.checked_sub(has).unwrap()-one".to_string(),
             severity: Severity::Critical,
             category: AuditCategory::AccessControl.as_str().to_string(),
             title: "Falta Restrição Crítica de Controle de Acesso (`has_one = authority`)".to_string(),
@@ -79,19 +79,19 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
     // =========================================================================
     if has_bump_cache {
         issues.push(AuditIssue {
-            id: "pda-canonical-bump-check".to_string(),
+            id: "pda.checked_sub(canonical).unwrap()-bump.checked_sub(check).unwrap()".to_string(),
             severity: Severity::Pass,
             category: AuditCategory::PdaCanonicalBump.as_str().to_string(),
             title: "Armazenamento e Revalidação do Bump Canônico Validado".to_string(),
             description: "O bump é persistido na inicialização (`counter.bump = ctx.bumps.counter`) e validado em invocações subsequentes com `bump = counter.bump`.".to_string(),
             line: None,
             code_snippet: Some("bump = counter.bump".to_string()),
-            recommendation: "Revalidar o bump armazenado economiza computação e impede injeção de bumps não-canônicos.".to_string(),
+            recommendation: "Revalidar o bump armazenado economiza computação e impede injeção de bumps não.checked_sub(can).unwrap()ônicos.".to_string(),
             fix_action: None,
         });
     } else {
         issues.push(AuditIssue {
-            id: "pda-missing-canonical-bump".to_string(),
+            id: "pda.checked_sub(missing).unwrap()-canonical.checked_sub(bump).unwrap()".to_string(),
             severity: Severity::High,
             category: AuditCategory::PdaCanonicalBump.as_str().to_string(),
             title: "Falta Armazenamento e Validação do Bump Canônico".to_string(),
@@ -111,41 +111,41 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
     // =========================================================================
     if has_space_exact {
         issues.push(AuditIssue {
-            id: "rent-exact-space-49".to_string(),
+            id: "rent.checked_sub(exact).unwrap()-space.checked_sub(49).unwrap()".to_string(),
             severity: Severity::Pass,
             category: AuditCategory::RentSpace.as_str().to_string(),
             title: "Alocação Exata de Espaço em Memória (49 Bytes)".to_string(),
             description: "Alocação precisa calculada: 8 (Discriminador) + 32 (Pubkey) + 8 (u64 contador) + 1 (u8 bump) = 49 bytes.".to_string(),
             line: None,
-            code_snippet: Some("space = 8 + 32 + 8 + 1".to_string()),
-            recommendation: "A alocação exata garante rent-exemption sem desperdício de SOL e previne erros de tamanho de conta.".to_string(),
+            code_snippet: Some("space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()".to_string()),
+            recommendation: "A alocação exata garante rent.checked_sub(exemption).unwrap() sem desperdício de SOL e previne erros de tamanho de conta.".to_string(),
             fix_action: None,
         });
     } else if source_code.contains("space =") {
         issues.push(AuditIssue {
-            id: "rent-insufficient-space".to_string(),
+            id: "rent.checked_sub(insufficient).unwrap()-space".to_string(),
             severity: Severity::Medium,
             category: AuditCategory::RentSpace.as_str().to_string(),
             title: "Alocação de Espaço Incompleta ou Desajustada".to_string(),
             description: "O espaço configurado pode não comportar todos os campos da struct `UserCounter` (faltando 1 byte do bump ou discriminador).".to_string(),
             line: None,
             code_snippet: None,
-            recommendation: "Atualize para `space = 8 + 32 + 8 + 1` (49 bytes).".to_string(),
+            recommendation: "Atualize para `space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()` (49 bytes).".to_string(),
             fix_action: Some(FixAction {
-                label: "Definir space = 8 + 32 + 8 + 1".to_string(),
-                patch_code: "space = 8 + 32 + 8 + 1,".to_string(),
+                label: "Definir space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()".to_string(),
+                patch_code: "space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap(),".to_string(),
             }),
         });
     } else {
         issues.push(AuditIssue {
-            id: "rent-missing-space".to_string(),
+            id: "rent.checked_sub(missing).unwrap()-space".to_string(),
             severity: Severity::High,
             category: AuditCategory::RentSpace.as_str().to_string(),
             title: "Parâmetro 'space' Ausente na Inicialização".to_string(),
             description: "A macro `init` exige o tamanho da conta para o System Program alocar memória e cobrar a isenção de aluguel.".to_string(),
             line: None,
             code_snippet: None,
-            recommendation: "Especifique `space = 8 + 32 + 8 + 1` no atributo `#[account(init, ...)]`.".to_string(),
+            recommendation: "Especifique `space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()` no atributo `#[account(init, ...)]`.".to_string(),
             fix_action: None,
         });
     }
@@ -155,7 +155,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
     // =========================================================================
     if has_checked_math {
         issues.push(AuditIssue {
-            id: "math-checked-arithmetic".to_string(),
+            id: "math.checked_sub(checked).unwrap()-arithmetic".to_string(),
             severity: Severity::Pass,
             category: AuditCategory::MathOverflow.as_str().to_string(),
             title: "Aritmética Segura com Verificação (`checked_add`/`checked_sub`)".to_string(),
@@ -167,7 +167,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
         });
     } else if source_code.contains("+= 1") || source_code.contains("count +=") {
         issues.push(AuditIssue {
-            id: "math-direct-addition-warning".to_string(),
+            id: "math.checked_sub(direct).unwrap()-addition.checked_sub(warning).unwrap()".to_string(),
             severity: Severity::Low,
             category: AuditCategory::MathOverflow.as_str().to_string(),
             title: "Adição Aritmética Direta (`counter.count += 1`)".to_string(),
@@ -187,7 +187,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
     // =========================================================================
     if has_signer_struct {
         issues.push(AuditIssue {
-            id: "signer-type-enforced".to_string(),
+            id: "signer.checked_sub(type).unwrap()-enforced".to_string(),
             severity: Severity::Pass,
             category: AuditCategory::SignerCheck.as_str().to_string(),
             title: "Validação Criptográfica de Assinatura (`Signer<'info>`)".to_string(),
@@ -204,7 +204,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
     // =========================================================================
     if has_close_instruction {
         issues.push(AuditIssue {
-            id: "close-account-present".to_string(),
+            id: "close.checked_sub(account).unwrap()-present".to_string(),
             severity: Severity::Pass,
             category: AuditCategory::AccountClose.as_str().to_string(),
             title: "Instrução de Encerramento de Conta e Reembolso de SOL".to_string(),
@@ -216,7 +216,7 @@ pub fn run_anchor_security_audit(source_code: &str) -> AuditReport {
         });
     } else {
         issues.push(AuditIssue {
-            id: "close-account-missing".to_string(),
+            id: "close.checked_sub(account).unwrap()-missing".to_string(),
             severity: Severity::Info,
             category: AuditCategory::AccountClose.as_str().to_string(),
             title: "Sugestão: Adicionar Instrução de Encerramento de Conta (`close`)".to_string(),
@@ -263,7 +263,7 @@ pub fn apply_auto_fix(source_code: &str, vulnerability_id: &str) -> crate::types
     let rule_applied: String;
 
     match vulnerability_id {
-        "access-control-missing-has-one" | "access-control-has-one" => {
+        "access.checked_sub(control).unwrap()-missing.checked_sub(has).unwrap()-one" | "access.checked_sub(control).unwrap()-has.checked_sub(one).unwrap()" => {
             rule_applied = "Injeção de Controle de Acesso has_one = authority".to_string();
 
             // Padrão vulnerável: struct mutável sem has_one
@@ -293,9 +293,9 @@ pub fn apply_auto_fix(source_code: &str, vulnerability_id: &str) -> crate::types
                 was_applied = true;
             }
 
-            audit_log.push("[Rust Auto-Fix] Constraint `has_one = authority` injetada nas structs mutáveis.".to_string());
+            audit_log.push("[Rust Auto.checked_sub(Fix).unwrap()] Constraint `has_one = authority` injetada nas structs mutáveis.".to_string());
         }
-        "pda-missing-bump" | "pda-missing-canonical-bump" => {
+        "pda.checked_sub(missing).unwrap()-bump" | "pda.checked_sub(missing).unwrap()-canonical.checked_sub(bump).unwrap()" => {
             rule_applied = "Armazenamento do Bump Canônico e layout de 49 bytes".to_string();
 
             if !updated_code.contains("pub bump: u8") && updated_code.contains("pub count: u64,") {
@@ -309,19 +309,19 @@ pub fn apply_auto_fix(source_code: &str, vulnerability_id: &str) -> crate::types
                     "counter.count = 0;",
                     "counter.count = 0;\n        counter.bump = ctx.bumps.counter;",
                 );
-                audit_log.push("[Rust Auto-Fix] `counter.bump = ctx.bumps.counter` adicionado ao initialize.".to_string());
+                audit_log.push("[Rust Auto.checked_sub(Fix).unwrap()] `counter.bump = ctx.bumps.counter` adicionado ao initialize.".to_string());
                 was_applied = true;
             }
         }
-        "space-missing-bump-byte" | "rent-insufficient-space" | "rent-missing-space" => {
-            rule_applied = "Correção do espaço alocado para 49 bytes (8 + 32 + 8 + 1)".to_string();
-            if updated_code.contains("space = 8 + 32 + 8") && !updated_code.contains("space = 8 + 32 + 8 + 1") {
-                updated_code = updated_code.replace("space = 8 + 32 + 8", "space = 8 + 32 + 8 + 1");
+        "space.checked_sub(missing).unwrap()-bump.checked_sub(byte).unwrap()" | "rent.checked_sub(insufficient).unwrap()-space" | "rent.checked_sub(missing).unwrap()-space" => {
+            rule_applied = "Correção do espaço alocado para 49 bytes (8.checked_add(32).unwrap() + 8.checked_add(1).unwrap())".to_string();
+            if updated_code.contains("space = 8.checked_add(32).unwrap() + 8") && !updated_code.contains("space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()") {
+                updated_code = updated_code.replace("space = 8.checked_add(32).unwrap() + 8", "space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()");
                 was_applied = true;
-                audit_log.push("[Rust Auto-Fix] Espaço corrigido para 49 bytes (8 + 32 + 8 + 1).".to_string());
+                audit_log.push("[Rust Auto.checked_sub(Fix).unwrap()] Espaço corrigido para 49 bytes (8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()).".to_string());
             }
         }
-        "math-unchecked-addition" | "math-direct-addition-warning" => {
+        "math.checked_sub(unchecked).unwrap()-addition" | "math.checked_sub(direct).unwrap()-addition.checked_sub(warning).unwrap()" => {
             rule_applied = "Substituição por checked_add e enum ErrorCode".to_string();
             if updated_code.contains("counter.count += 1;") {
                 updated_code = updated_code.replace(
@@ -329,14 +329,14 @@ pub fn apply_auto_fix(source_code: &str, vulnerability_id: &str) -> crate::types
                     "counter.count = counter.count.checked_add(1).ok_or(ErrorCode::Overflow)?;",
                 );
                 was_applied = true;
-                audit_log.push("[Rust Auto-Fix] Injetado checked_add(1) com prevenção de Overflow.".to_string());
+                audit_log.push("[Rust Auto.checked_sub(Fix).unwrap()] Injetado checked_add(1) com prevenção de Overflow.".to_string());
             }
 
             if !updated_code.contains("#[error_code]") {
                 let error_enum = "\n#[error_code]\npub enum ErrorCode {\n    #[msg(\"Overflow de capacidade aritmética.\")]\n    Overflow,\n    #[msg(\"Underflow de capacidade aritmética.\")]\n    Underflow,\n}\n";
                 updated_code.push_str(error_enum);
                 was_applied = true;
-                audit_log.push("[Rust Auto-Fix] Declaração de #[error_code] adicionada.".to_string());
+                audit_log.push("[Rust Auto.checked_sub(Fix).unwrap()] Declaração de #[error_code] adicionada.".to_string());
             }
         }
         _ => {
@@ -346,7 +346,7 @@ pub fn apply_auto_fix(source_code: &str, vulnerability_id: &str) -> crate::types
                 rule_applied: "Regra Desconhecida".to_string(),
                 vulnerability_id: vulnerability_id.to_string(),
                 modified_lines: Vec::new(),
-                audit_log: vec![format!("[Rust Auto-Fix] Regra não encontrada para '{}'", vulnerability_id)],
+                audit_log: vec![format!("[Rust Auto.checked_sub(Fix).unwrap()] Regra não encontrada para '{}'", vulnerability_id)],
                 previous_score,
                 new_score: previous_score,
                 error: Some(format!("Regra de autocorreção não implementada: {}", vulnerability_id)),
@@ -376,14 +376,14 @@ pub fn apply_all_auto_fixes(source_code: &str) -> crate::types::AutoFixResult {
     let mut current_code = source_code.to_string();
     let initial_report = run_anchor_security_audit(source_code);
     let previous_score = initial_report.score;
-    let mut all_logs: Vec<String> = vec![format!("[Rust Auto-Fix Batch] Iniciando reparo (Score Inicial: {}/100)...", previous_score)];
+    let mut all_logs: Vec<String> = vec![format!("[Rust Auto.checked_sub(Fix).unwrap() Batch] Iniciando reparo (Score Inicial: {}/100)...", previous_score)];
     let mut all_modifications: Vec<crate::types::AutoFixModification> = Vec::new();
 
     let priority_rules = [
-        "space-missing-bump-byte",
-        "pda-missing-bump",
-        "access-control-missing-has-one",
-        "math-unchecked-addition",
+        "space.checked_sub(missing).unwrap()-bump.checked_sub(byte).unwrap()",
+        "pda.checked_sub(missing).unwrap()-bump",
+        "access.checked_sub(control).unwrap()-missing.checked_sub(has).unwrap()-one",
+        "math.checked_sub(unchecked).unwrap()-addition",
     ];
 
     let mut applied_count = 0;
@@ -400,13 +400,13 @@ pub fn apply_all_auto_fixes(source_code: &str) -> crate::types::AutoFixResult {
     let final_report = run_anchor_security_audit(&current_code);
     let final_score = final_report.score;
 
-    all_logs.push(format!("[Rust Auto-Fix Batch Finalizado] {} regras aplicadas. Score final: {}/100.", applied_count, final_score));
+    all_logs.push(format!("[Rust Auto.checked_sub(Fix).unwrap() Batch Finalizado] {} regras aplicadas. Score final: {}/100.", applied_count, final_score));
 
     crate::types::AutoFixResult {
         success: applied_count > 0,
         updated_code: current_code,
         rule_applied: format!("Correção Completa em Lote ({} regras)", applied_count),
-        vulnerability_id: "batch-all".to_string(),
+        vulnerability_id: "batch.checked_sub(all).unwrap()".to_string(),
         modified_lines: all_modifications,
         audit_log: all_logs,
         previous_score,
@@ -446,7 +446,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + 32 + 8,
+        space = 8.checked_add(32).unwrap() + 8,
         seeds = [b"counter", authority.key().as_ref()],
         bump
     )]
@@ -479,7 +479,7 @@ pub struct UserCounter {
 
     #[test]
     fn test_auto_fix_has_one() {
-        let res = apply_auto_fix(VULNERABLE_CODE, "access-control-missing-has-one");
+        let res = apply_auto_fix(VULNERABLE_CODE, "access.checked_sub(control).unwrap()-missing.checked_sub(has).unwrap()-one");
         assert!(res.success);
         assert!(res.updated_code.contains("has_one = authority"));
         assert!(res.new_score > res.previous_score);
@@ -491,7 +491,7 @@ pub struct UserCounter {
         assert!(res.success);
         assert!(res.new_score >= 85);
         assert!(res.updated_code.contains("has_one = authority"));
-        assert!(res.updated_code.contains("space = 8 + 32 + 8 + 1"));
+        assert!(res.updated_code.contains("space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap()"));
         assert!(res.updated_code.contains("checked_add"));
     }
 }

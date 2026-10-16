@@ -39,7 +39,7 @@ pub fn calculate_minimum_balance_for_rent_exemption(space_bytes: usize) -> u64 {
     const LAMPORTS_PER_BYTE_YEAR: f64 = 190_554_414_784.0 / (1024.0 * 1024.0);
     const EXEMPT_YEARS: f64 = 2.0;
 
-    let total_bytes = (space_bytes + ACCOUNT_STORAGE_OVERHEAD) as f64;
+    let total_bytes = (space_bytes.checked_add(ACCOUNT_STORAGE_OVERHEAD).unwrap()) as f64;
     (total_bytes * LAMPORTS_PER_BYTE_YEAR * EXEMPT_YEARS).ceil() as u64
 }
 
@@ -90,9 +90,9 @@ pub fn build_user_counter_memory_layout(
             name: "Count".to_string(),
             offset: 40,
             size_bytes: 8,
-            type_name: "u64 (Little-Endian)".to_string(),
+            type_name: "u64 (Little.checked_sub(Endian).unwrap())".to_string(),
             hex_representation: format!("0x{} (valor: {})", count_hex, count),
-            description: "Valor do contador inteiro sem sinal de 64 bits em formato little-endian.".to_string(),
+            description: "Valor do contador inteiro sem sinal de 64 bits em formato little.checked_sub(endian).unwrap().".to_string(),
         },
         MemorySegment {
             name: "Bump".to_string(),

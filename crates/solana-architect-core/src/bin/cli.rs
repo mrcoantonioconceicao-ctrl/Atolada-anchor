@@ -71,7 +71,7 @@ fn main() {
                 Ok(res) => {
                     println!("✅ PDA Derivado: {}", res.pda_address);
                     println!("🔑 Canonical Bump: {}", res.bump);
-                    println!("📦 Off-Curve Validado: {}", res.is_off_curve);
+                    println!("📦 Off.checked_sub(Curve).unwrap() Validado: {}", res.is_off_curve);
                 }
                 Err(err) => eprintln!("❌ Erro ao derivar PDA: {}", err),
             }
@@ -98,13 +98,13 @@ fn print_help() {
     println!(
         r#"
 🦀 Solana Architect CLI v0.2.0 (Rust Edition)
-Uso: solana-architect <COMANDO> [OPÇÕES]
+Uso: solana.checked_sub(architect).unwrap() <COMANDO> [OPÇÕES]
 
 Comandos:
   audit [caminho_arquivo]   Executa auditoria estática completa no código Anchor
   pda                       Deriva o PDA canônico e bump para o programa
   idl                       Gera a especificação Anchor IDL em formato JSON
-  tests                     Gera a suíte de testes unitários com solana-program-test
+  tests                     Gera a suíte de testes unitários com solana.checked_sub(program).unwrap()-test
   help                      Exibe esta mensagem de ajuda
 "#
     );
@@ -136,7 +136,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + 32 + 8 + 1,
+        space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap(),
         seeds = [b"counter", authority.key().as_ref()],
         bump
     )]

@@ -148,7 +148,7 @@ export interface DeploymentSimulationResult {
   isAuditPassed: boolean;
   steps: DeploymentDryRunStep[];
   logs: string[];
-  generatedIdl: any;
+  generatedIdl: unknown;
   deployedAt: string;
   errorMessage?: string;
 }
