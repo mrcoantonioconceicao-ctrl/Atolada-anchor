@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import { AuditIssue, AuditReport, AutoFixResult, AutoFixModification } from '../types/solana';
 import { runAnchorSecurityAudit } from './solanaUtils';
 

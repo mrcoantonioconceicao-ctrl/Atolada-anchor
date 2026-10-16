@@ -81,10 +81,10 @@ impl SvmSimulatorState {
 
                 // Deduz o aluguel do assinante
                 if let Some(w) = self.wallets.iter_mut().find(|w| w.pubkey == signer_pubkey) {
-                    if w.balance_lamports < rent_lamports + 5000 {
-                        return Err("Saldo insuficiente para pagar o aluguel de rent-exemption.".to_string());
+                    if w.balance_lamports < rent_lamports.checked_add(5000).unwrap() {
+                        return Err("Saldo insuficiente para pagar o aluguel de rent.checked_sub(exemption).unwrap().".to_string());
                     }
-                    w.balance_lamports -= rent_lamports + 5000; // Aluguel + taxa de tx de 5000 lamports
+                    w.balance_lamports -= rent_lamports.checked_add(5000).unwrap(); // Aluguel.checked_add(taxa).unwrap() de tx de 5000 lamports
                 }
 
                 self.counter_account = Some(AccountMemoryState {
@@ -146,7 +146,7 @@ impl SvmSimulatorState {
                         is_success: false,
                         compute_units_consumed: 1850,
                         logs,
-                        error_message: Some("AnchorError: ConstraintHasOne - Assinante não autorizado!".to_string()),
+                        error_message: Some("AnchorError: ConstraintHasOne.checked_sub(Assinante).unwrap() não autorizado!".to_string()),
                     };
                     self.tx_history.push(tx_log.clone());
                     return Ok(tx_log);

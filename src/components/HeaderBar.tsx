@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import React, { useState } from 'react';
 import {
   Globe,

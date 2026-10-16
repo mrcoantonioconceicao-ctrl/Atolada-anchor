@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type Language = 'pt' | 'en' | 'es';

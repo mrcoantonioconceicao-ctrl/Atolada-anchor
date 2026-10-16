@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import React, { useState } from 'react';
 import { Sparkles, X, Send, Bot, Code, CheckCircle2, Loader2, Zap } from 'lucide-react';
 

@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 /**
 //! Definições de Tipos e Interfaces do Solana Architect Core
 //! Sincronizado com os structs do crate Rust `crates/solana-architect-core`

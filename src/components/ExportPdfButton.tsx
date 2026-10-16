@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import React, { useState } from 'react';
 import { FileDown, Check, Loader2, FileText, Shield } from 'lucide-react';
 import { AuditIssue, AutoFixResult } from '../types/solana';

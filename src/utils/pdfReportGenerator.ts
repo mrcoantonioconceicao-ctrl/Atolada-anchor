@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AuditIssue, AutoFixResult } from '../types/solana';

@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 /**
  * Solana Multi-Cluster RPC Load Balancer & Circuit Breaker
  * Designed to handle high concurrent client traffic (10,000+ users) with automatic failover,

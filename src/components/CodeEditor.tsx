@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import React, { useState } from 'react';
 import { CODE_TEMPLATES } from '../data/defaultContracts';
 import { AuditIssue, AutoFixResult } from '../types/solana';

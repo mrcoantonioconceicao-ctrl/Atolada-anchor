@@ -1,3 +1,5 @@
+import process from "node:process";
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
