@@ -219,7 +219,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
       const result = await fetchPublicGithubRepository(targetUrl);
       setPublicRepoData(result);
       setSelectedFileInPublicRepo(result.selectedFilePath);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPublicRepoError(err.message || 'Falha ao buscar repositório público do GitHub.');
     } finally {
       setIsLoadingPublicRepo(false);
@@ -243,7 +243,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
         shareableUrl: `${window.location.origin}/?repo=https://github.com/${publicRepoData.owner}/${publicRepoData.repo}/blob/${publicRepoData.branch}/${file.path}`,
       });
       setSelectedFileInPublicRepo(file.path);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPublicRepoError(err.message || 'Falha ao carregar arquivo selecionado.');
     } finally {
       setIsLoadingPublicRepo(false);
@@ -297,7 +297,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
       } finally {
         setIsLoadingRepos(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setGithubUser(null);
       setTokenError(err.message || 'Falha ao autenticar no GitHub com o token informado.');
     } finally {
@@ -430,7 +430,7 @@ Este Pull Request foi gerado automaticamente pelo **Solana Architect IDE & DevSe
           isPr: false,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPushError(err.message || 'Erro ao enviar os arquivos para o GitHub.');
     } finally {
       setIsPushing(false);

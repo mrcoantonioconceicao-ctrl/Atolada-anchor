@@ -138,7 +138,7 @@ export async function loginWithGoogle(): Promise<User | null> {
     }
     
     return user;
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errorCode = error?.code || '';
     const isCancelledByUser =
       errorCode === 'auth/cancelled-popup-request' ||
@@ -172,8 +172,8 @@ export interface CloudContract {
   sourceCode: string;
   templateType?: string;
   auditScore: number;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 }
 
 export interface CloudAuditRecord {
@@ -184,7 +184,7 @@ export interface CloudAuditRecord {
   passedChecks: number;
   totalRules: number;
   isProductionReady: boolean;
-  createdAt?: any;
+  createdAt?: unknown;
 }
 
 // In-Memory Write Cache & Debouncer to handle 10,000+ client bursts without Firestore rate-limit collisions
