@@ -32,7 +32,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + 32 + 8 + 1,
+        space = 8.checked_add(32).unwrap() + 8.checked_add(1).unwrap(),
         seeds = [b"counter", authority.key().as_ref()],
         bump
     )]

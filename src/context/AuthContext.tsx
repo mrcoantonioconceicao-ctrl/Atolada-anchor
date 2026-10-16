@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const loggedUser = await loginWithGoogle();
       return loggedUser;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const code = err?.code || '';
       if (
         code !== 'auth/cancelled-popup-request' &&

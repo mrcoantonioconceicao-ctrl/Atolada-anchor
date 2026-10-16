@@ -320,8 +320,8 @@ export async function fetchPublicGithubRepository(urlOrIdentifier: string): Prom
       const treeData = await treeRes.json();
       if (Array.isArray(treeData.tree)) {
         treeFiles = treeData.tree
-          .filter((item: any) => item.type === 'blob')
-          .map((item: any) => ({ path: item.path, size: item.size }));
+          .filter((item: unknown) => item.type === 'blob')
+          .map((item: unknown) => ({ path: item.path, size: item.size }));
       }
     }
   } catch (e) {
@@ -466,7 +466,7 @@ export async function getUserRepositories(token: string): Promise<GithubRepo[]> 
   }
 
   const data = await response.json();
-  return data.map((repo: any) => ({
+  return data.map((repo: unknown) => ({
     id: repo.id,
     name: repo.name,
     full_name: repo.full_name,
@@ -577,7 +577,7 @@ export async function pushFilesToGithub(
     const sha = await getExistingFileSha(cleanToken, owner, repo, file.path, branch);
     const base64Content = utf8ToBase64(file.content);
 
-    const bodyData: any = {
+    const bodyData: unknown = {
       message: `${commitMessage} - ${file.path}`,
       content: base64Content,
       branch: branch || 'main',
@@ -769,7 +769,7 @@ export async function createGithubPullRequest(
         error: reason,
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: true,
       prUrl: pushRes.commitUrl || `${pushRes.repoUrl}/tree/${targetBranch}`,

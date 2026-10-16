@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { PublicKey, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   AuditIssue,
@@ -65,7 +66,7 @@ export function deriveCounterPda(
     pruneCache(pdaDerivationCache);
     pdaDerivationCache.set(cacheKey, result);
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     const errResult: PdaDerivationResult = {
       success: false,
       error: error.message || 'Invalid Program ID or Authority Public Key',
