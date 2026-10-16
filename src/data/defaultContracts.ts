@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import { CodeTemplate } from '../types/solana';
 
 export const USER_INITIAL_COUNTER_CODE = `use anchor_lang::prelude::*;

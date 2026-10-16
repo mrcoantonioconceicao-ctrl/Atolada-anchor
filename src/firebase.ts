@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,

@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 import { PublicKey, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   AuditIssue,

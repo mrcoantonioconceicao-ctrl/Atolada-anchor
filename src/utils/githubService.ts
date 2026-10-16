@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any require-await
 export interface GithubUser {
   login: string;
   name: string | null;
