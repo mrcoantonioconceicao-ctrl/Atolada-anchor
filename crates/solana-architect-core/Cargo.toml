@@ -31,3 +31,9 @@ proc-macro2 = "1.0"
 [dev-dependencies]
 solana-program-test = "1.18.0"
 tokio = { version = "1.40", features = ["full"] }
+
+[profile.release]
+overflow-checks = true
+
+[profile.dev]
+overflow-checks = true

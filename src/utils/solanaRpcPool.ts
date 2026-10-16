@@ -61,7 +61,7 @@ export const MAINNET_RPC_ENDPOINTS: RpcEndpointConfig[] = [
 
 // In-Memory Short-Lived RPC Response Cache (TTL 10s) to prevent duplicated RPC calls across 10k clients
 interface CacheEntry {
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 const rpcCache = new Map<string, CacheEntry>();
@@ -134,7 +134,7 @@ export class SolanaRpcPool {
   public static async executeJsonRpc<T>(
     cluster: 'devnet' | 'mainnet-beta',
     method: string,
-    params: any[] = []
+    params: unknown[] = []
   ): Promise<T> {
     const cacheKey = `${cluster}:${method}:${JSON.stringify(params)}`;
     const cached = rpcCache.get(cacheKey);
@@ -182,7 +182,7 @@ export class SolanaRpcPool {
         const result = data.result as T;
         rpcCache.set(cacheKey, { data: result, timestamp: now });
         return result;
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.reportFailure(cluster, endpointUrl);
         lastError = err;
       }
