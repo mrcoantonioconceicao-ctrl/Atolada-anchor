@@ -1,3 +1,4 @@
+import process from "node:process";
 import express from 'express';
 import dotenv from 'dotenv';
 import compression from 'compression';
@@ -127,7 +128,7 @@ app.post('/api/gemini', geminiAiLimiter, async (req, res) => {
     });
 
     return res.json({ text: response.text });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error calling Gemini API:', error);
     return res.status(500).json({ error: error.message || 'Failed to process AI request.' });
   }
