@@ -48,7 +48,7 @@ Explain key security details like PDA seeds, canonical bump validation, account 
       } else {
         setAiResponse(data.text);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setAiResponse(`⚠️ Request failed: ${err.message || 'Server error'}`);
     } finally {
       setLoading(false);
