@@ -180,7 +180,7 @@ pub struct Initialize<'info> {
     )]
     pub counter: Account<'info, UserCounter>,
 
-    #[account(mut)]
+    #[account(mut)
     pub authority: Signer<'info>,
 
     pub system_program: Program<'info, System>,
